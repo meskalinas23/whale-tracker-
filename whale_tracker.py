@@ -120,6 +120,7 @@ def fetch_positions(wallet: str):
                 "coin": pos.get("coin", "?"),
                 "side": "LONG" if szi > 0 else "SHORT",
                 "size_usd": abs(szi) * float(pos.get("entryPx", 0)),
+                "entry_price": float(pos.get("entryPx", 0)),
                 "unrealized_pnl": float(pos.get("unrealizedPnl", 0)),
             })
         return positions
@@ -134,7 +135,9 @@ def positions_summary_html(positions):
     parts = []
     for p in positions:
         color = "#0a7d2c" if p["side"] == "LONG" else "#c0392b"
-        parts.append(f"<span style='color:{color}'>{p['side']} {p['coin']} ${p['size_usd']:,.0f}</span>")
+        parts.append(
+            f"<span style='color:{color}'>{p['side']} {p['coin']} ${p['size_usd']:,.0f} @ ${p['entry_price']:,.4f}</span>"
+        )
     return " · ".join(parts)
 
 
@@ -157,7 +160,7 @@ def build_html_report(shortlist: pd.DataFrame) -> str:
         for _, w in df.iterrows():
             wallet = w["wallet"]
             short_addr = wallet[:6] + "..." + wallet[-4:]
-            explorer_url = f"https://app.hyperliquid.xyz/explorer/address/{wallet}"
+            explorer_url = f"https://hyperdash.info/trader/{wallet}"
             positions_html = positions_summary_html(positions_by_wallet.get(wallet, []))
             rows += f"""
             <tr>
