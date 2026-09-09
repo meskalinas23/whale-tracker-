@@ -141,6 +141,56 @@ def positions_summary_html(positions):
     return " · ".join(parts)
 
 
+def build_coin_dominance(positions_by_wallet: dict) -> pd.DataFrame:
+    """Aggregate all tracked whales' positions by coin: how many long/short, net exposure."""
+    stats = {}
+    for wallet, positions in positions_by_wallet.items():
+        for p in positions:
+            coin = p["coin"]
+            if coin not in stats:
+                stats[coin] = {"coin": coin, "long_count": 0, "short_count": 0, "long_usd": 0.0, "short_usd": 0.0}
+            if p["side"] == "LONG":
+                stats[coin]["long_count"] += 1
+                stats[coin]["long_usd"] += p["size_usd"]
+            else:
+                stats[coin]["short_count"] += 1
+                stats[coin]["short_usd"] += p["size_usd"]
+
+    rows = list(stats.values())
+    df = pd.DataFrame(rows)
+    if df.empty:
+        return df
+    df["total_usd"] = df["long_usd"] + df["short_usd"]
+    df["net_usd"] = df["long_usd"] - df["short_usd"]
+    df["total_traders"] = df["long_count"] + df["short_count"]
+    df = df.sort_values("total_usd", ascending=False)
+    return df
+
+
+def coin_dominance_html(df: pd.DataFrame, top_n=15) -> str:
+    if df.empty:
+        return "<p>No position data available.</p>"
+    rows = ""
+    for _, r in df.head(top_n).iterrows():
+        net_color = "#0a7d2c" if r["net_usd"] > 0 else "#c0392b"
+        net_label = "net LONG" if r["net_usd"] > 0 else "net SHORT"
+        rows += f"""
+        <tr>
+            <td><strong>{r['coin']}</strong></td>
+            <td>{r['total_traders']} tracked whale(s)</td>
+            <td>{r['long_count']} long / {r['short_count']} short</td>
+            <td>${r['total_usd']:,.0f}</td>
+            <td style="color:{net_color}"><strong>${abs(r['net_usd']):,.0f} {net_label}</strong></td>
+        </tr>
+        """
+    return f"""
+    <table>
+        <thead><tr><th>Coin</th><th>Whales holding it</th><th>Long/Short split</th><th>Total exposure</th><th>Net positioning</th></tr></thead>
+        <tbody>{rows}</tbody>
+    </table>
+    """
+
+
 def build_html_report(shortlist: pd.DataFrame) -> str:
     today = dt.date.today().isoformat()
 
@@ -178,6 +228,9 @@ def build_html_report(shortlist: pd.DataFrame) -> str:
     quality_html = table_rows(quality)
     active_html = table_rows(active)
 
+    dominance_df = build_coin_dominance(positions_by_wallet)
+    dominance_html = coin_dominance_html(dominance_df)
+
     html = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -198,6 +251,9 @@ def build_html_report(shortlist: pd.DataFrame) -> str:
 <body>
     <h1>Hyperliquid Whale Tracker</h1>
     <p class="updated">Last updated: {today}</p>
+
+    <h2>📊 Coin Dominance (aggregated across all tracked whales)</h2>
+    {dominance_html}
 
     <h2>🏆 Quality Whales (top {QUALITY_TIER_SIZE} by blended score)</h2>
     <table>
