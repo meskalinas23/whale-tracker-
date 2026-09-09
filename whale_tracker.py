@@ -142,19 +142,27 @@ def positions_summary_html(positions):
 
 
 def build_coin_dominance(positions_by_wallet: dict) -> pd.DataFrame:
-    """Aggregate all tracked whales' positions by coin: how many long/short, net exposure."""
+    """Aggregate all tracked whales' positions by coin: how many long/short, net exposure, avg entry."""
     stats = {}
     for wallet, positions in positions_by_wallet.items():
         for p in positions:
             coin = p["coin"]
             if coin not in stats:
-                stats[coin] = {"coin": coin, "long_count": 0, "short_count": 0, "long_usd": 0.0, "short_usd": 0.0}
+                stats[coin] = {
+                    "coin": coin, "long_count": 0, "short_count": 0,
+                    "long_usd": 0.0, "short_usd": 0.0,
+                    "long_entry_weighted_sum": 0.0, "short_entry_weighted_sum": 0.0,
+                }
+            size = p["size_usd"]
+            entry = p["entry_price"]
             if p["side"] == "LONG":
                 stats[coin]["long_count"] += 1
-                stats[coin]["long_usd"] += p["size_usd"]
+                stats[coin]["long_usd"] += size
+                stats[coin]["long_entry_weighted_sum"] += entry * size
             else:
                 stats[coin]["short_count"] += 1
-                stats[coin]["short_usd"] += p["size_usd"]
+                stats[coin]["short_usd"] += size
+                stats[coin]["short_entry_weighted_sum"] += entry * size
 
     rows = list(stats.values())
     df = pd.DataFrame(rows)
@@ -163,6 +171,12 @@ def build_coin_dominance(positions_by_wallet: dict) -> pd.DataFrame:
     df["total_usd"] = df["long_usd"] + df["short_usd"]
     df["net_usd"] = df["long_usd"] - df["short_usd"]
     df["total_traders"] = df["long_count"] + df["short_count"]
+    df["avg_long_entry"] = df.apply(
+        lambda r: r["long_entry_weighted_sum"] / r["long_usd"] if r["long_usd"] > 0 else None, axis=1
+    )
+    df["avg_short_entry"] = df.apply(
+        lambda r: r["short_entry_weighted_sum"] / r["short_usd"] if r["short_usd"] > 0 else None, axis=1
+    )
     df = df.sort_values("total_usd", ascending=False)
     return df
 
@@ -174,6 +188,8 @@ def coin_dominance_html(df: pd.DataFrame, top_n=15) -> str:
     for _, r in df.head(top_n).iterrows():
         net_color = "#0a7d2c" if r["net_usd"] > 0 else "#c0392b"
         net_label = "net LONG" if r["net_usd"] > 0 else "net SHORT"
+        long_avg = f"${r['avg_long_entry']:,.4f}" if pd.notna(r["avg_long_entry"]) else "—"
+        short_avg = f"${r['avg_short_entry']:,.4f}" if pd.notna(r["avg_short_entry"]) else "—"
         rows += f"""
         <tr>
             <td><strong>{r['coin']}</strong></td>
@@ -181,11 +197,13 @@ def coin_dominance_html(df: pd.DataFrame, top_n=15) -> str:
             <td>{r['long_count']} long / {r['short_count']} short</td>
             <td>${r['total_usd']:,.0f}</td>
             <td style="color:{net_color}"><strong>${abs(r['net_usd']):,.0f} {net_label}</strong></td>
+            <td>{long_avg}</td>
+            <td>{short_avg}</td>
         </tr>
         """
     return f"""
     <table>
-        <thead><tr><th>Coin</th><th>Whales holding it</th><th>Long/Short split</th><th>Total exposure</th><th>Net positioning</th></tr></thead>
+        <thead><tr><th>Coin</th><th>Whales holding it</th><th>Long/Short split</th><th>Total exposure</th><th>Net positioning</th><th>Avg Long Entry</th><th>Avg Short Entry</th></tr></thead>
         <tbody>{rows}</tbody>
     </table>
     """
