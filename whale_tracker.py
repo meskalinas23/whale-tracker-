@@ -172,9 +172,13 @@ def find_reference_snapshot(history_df, coin, target_time, tolerance_hours=3):
     return best
 
 
-def pct_change_label(old_val, new_val):
-    if old_val is None or old_val == 0:
+def pct_change_label(old_val, new_val, has_reference):
+    if not has_reference:
         return "no data yet"
+    if old_val == 0:
+        if new_val == 0:
+            return "—"
+        return "🆕 new exposure"
     change = (new_val - old_val) / old_val * 100
     sign = "+" if change >= 0 else ""
     return f"{sign}{change:.0f}%"
@@ -253,8 +257,9 @@ def coin_dominance_html(df: pd.DataFrame, history_df, now, top_n=15) -> str:
     rows = ""
     for _, r in df.head(top_n).iterrows():
         ref = find_reference_snapshot(history_df, r["coin"], target_time)
-        long_change = pct_change_label(ref["long_usd"], r["long_usd"]) if ref is not None else "no data yet"
-        short_change = pct_change_label(ref["short_usd"], r["short_usd"]) if ref is not None else "no data yet"
+        has_ref = ref is not None
+        long_change = pct_change_label(ref["long_usd"] if has_ref else None, r["long_usd"], has_ref)
+        short_change = pct_change_label(ref["short_usd"] if has_ref else None, r["short_usd"], has_ref)
 
         net_color = "#0a7d2c" if r["net_usd"] > 0 else "#c0392b"
         net_label = "net LONG" if r["net_usd"] > 0 else "net SHORT"
