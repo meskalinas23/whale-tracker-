@@ -107,6 +107,43 @@ def build_shortlist(rows):
     return shortlist
 
 
+LOCKED_SHORTLIST_PATH = "locked_shortlist.csv"
+LOCK_REFRESH_HOURS = 48  # how often the tracked wallet set is allowed to change
+
+
+def get_locked_shortlist(fresh_shortlist: pd.DataFrame) -> pd.DataFrame:
+    """
+    Reuse the same set of tracked wallets for LOCK_REFRESH_HOURS, instead of
+    re-deriving a fresh top-N every run. This keeps 'vs 24h ago' comparisons
+    meaningful — they reflect the same wallets' real position changes, not
+    a different population of wallets qualifying each hour.
+    """
+    now = pd.Timestamp.utcnow()
+    try:
+        locked = pd.read_csv(LOCKED_SHORTLIST_PATH)
+        locked_at = pd.to_datetime(locked["locked_at"].iloc[0], utc=True)
+        age_hours = (now - locked_at).total_seconds() / 3600
+        if age_hours < LOCK_REFRESH_HOURS:
+            print(f"Using locked shortlist from {age_hours:.1f}h ago ({len(locked)} wallets).")
+            # re-attach current stats (roi/pnl/volume) for the locked wallets from the fresh pull,
+            # so the numbers shown are still up to date even though membership is fixed
+            merged = fresh_shortlist[fresh_shortlist["wallet"].isin(locked["wallet"])].copy()
+            # any locked wallet that dropped off the fresh leaderboard entirely keeps its last known stats
+            missing = locked[~locked["wallet"].isin(merged["wallet"])]
+            if not missing.empty:
+                merged = pd.concat([merged, missing.drop(columns=["locked_at"], errors="ignore")], ignore_index=True)
+            return merged
+    except (FileNotFoundError, KeyError, IndexError):
+        pass
+
+    # time to create a new lock
+    print(f"Locking a fresh shortlist ({len(fresh_shortlist)} wallets) for the next {LOCK_REFRESH_HOURS}h.")
+    to_save = fresh_shortlist.copy()
+    to_save["locked_at"] = now.isoformat()
+    to_save.to_csv(LOCKED_SHORTLIST_PATH, index=False)
+    return fresh_shortlist
+
+
 def update_history(shortlist: pd.DataFrame):
     today = dt.date.today().isoformat()
 
@@ -233,6 +270,36 @@ def save_coin_history(history_df, dominance_df, now):
     combined.to_csv(COIN_HISTORY_PATH, index=False)
 
 
+def fetch_market_oi() -> dict:
+    """
+    Total Open Interest per coin, market-wide (not just our tracked whales).
+    Free, official, no key — but this is TOTAL market size, not a long/short
+    split (perpetuals always have equal long/short dollar value by design).
+    """
+    try:
+        resp = requests.post(
+            "https://api.hyperliquid.xyz/info",
+            json={"type": "metaAndAssetCtxs"},
+            headers={"Content-Type": "application/json"},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        meta, asset_ctxs = data[0], data[1]
+        universe = meta.get("universe", [])
+        oi_by_coin = {}
+        for u, ctx in zip(universe, asset_ctxs):
+            coin = u.get("name")
+            oi_raw = ctx.get("openInterest")
+            mark_px = ctx.get("markPx")
+            if coin and oi_raw is not None and mark_px is not None:
+                oi_by_coin[coin] = float(oi_raw) * float(mark_px)
+        return oi_by_coin
+    except Exception as e:
+        print(f"Could not fetch market-wide OI: {e}")
+        return {}
+
+
 def build_coin_dominance(positions_by_wallet: dict) -> pd.DataFrame:
     """Aggregate all tracked whales' positions by coin: how many long/short, net exposure, avg entry, avg leverage."""
     stats = {}
@@ -277,14 +344,17 @@ def build_coin_dominance(positions_by_wallet: dict) -> pd.DataFrame:
         lambda r: r["leverage_weighted_sum"] / r["leverage_weight_total"] if r["leverage_weight_total"] > 0 else None,
         axis=1,
     )
+    df["long_pct"] = df.apply(lambda r: r["long_usd"] / r["total_usd"] * 100 if r["total_usd"] > 0 else 0, axis=1)
+    df["short_pct"] = df.apply(lambda r: r["short_usd"] / r["total_usd"] * 100 if r["total_usd"] > 0 else 0, axis=1)
     df = df.sort_values("total_usd", ascending=False)
     return df
 
 
-def coin_dominance_html(df: pd.DataFrame, history_df, now, top_n=15) -> str:
+def coin_dominance_html(df: pd.DataFrame, history_df, now, market_oi: dict = None, top_n=15) -> str:
     if df.empty:
         return "<p>No position data available.</p>"
-    target_time = now - pd.Timedelta(hours=24)
+    market_oi = market_oi or {}
+    target_time = now - pd.Timedelta(hours=12)
     rows = ""
     for _, r in df.head(top_n).iterrows():
         ref = find_reference_snapshot(history_df, r["coin"], target_time)
@@ -297,21 +367,28 @@ def coin_dominance_html(df: pd.DataFrame, history_df, now, top_n=15) -> str:
         long_avg = f"${r['avg_long_entry']:,.4f}" if pd.notna(r["avg_long_entry"]) else "—"
         short_avg = f"${r['avg_short_entry']:,.4f}" if pd.notna(r["avg_short_entry"]) else "—"
         avg_lev = f"{r['avg_leverage']:.1f}x" if pd.notna(r["avg_leverage"]) else "—"
+        ratio_label = f"{r['long_pct']:.0f}% long / {r['short_pct']:.0f}% short"
+
+        coin_oi = market_oi.get(r["coin"])
+        oi_label = f"${coin_oi:,.0f}" if coin_oi is not None else "—"
+        our_share = f" ({r['total_usd']/coin_oi*100:.1f}% of it)" if coin_oi and coin_oi > 0 else ""
+
         rows += f"""
         <tr>
             <td><strong>{r['coin']}</strong></td>
             <td>{r['total_traders']} tracked whale(s)</td>
-            <td>${r['long_usd']:,.0f} ({r['long_count']}) <span style="color:#666">{long_change} vs 24h ago</span></td>
-            <td>${r['short_usd']:,.0f} ({r['short_count']}) <span style="color:#666">{short_change} vs 24h ago</span></td>
-            <td style="color:{net_color}"><strong>${abs(r['net_usd']):,.0f} {net_label}</strong></td>
+            <td>${r['long_usd']:,.0f} ({r['long_count']}) <span style="color:#666">{long_change} vs 12h ago</span></td>
+            <td>${r['short_usd']:,.0f} ({r['short_count']}) <span style="color:#666">{short_change} vs 12h ago</span></td>
+            <td style="color:{net_color}"><strong>${abs(r['net_usd']):,.0f} {net_label}</strong><br><span style="color:#666; font-weight:normal;">{ratio_label}</span></td>
             <td>{long_avg}</td>
             <td>{short_avg}</td>
             <td>{avg_lev}</td>
+            <td>{oi_label}<span style="color:#999">{our_share}</span></td>
         </tr>
         """
     return f"""
     <table>
-        <thead><tr><th>Coin</th><th>Whales holding it</th><th>Long exposure</th><th>Short exposure</th><th>Net positioning</th><th>Avg Long Entry</th><th>Avg Short Entry</th><th>Avg Leverage</th></tr></thead>
+        <thead><tr><th>Coin</th><th>Whales holding it</th><th>Long exposure</th><th>Short exposure</th><th>Net positioning</th><th>Avg Long Entry</th><th>Avg Short Entry</th><th>Avg Leverage</th><th>Market OI (whole market)</th></tr></thead>
         <tbody>{rows}</tbody>
     </table>
     """
@@ -340,7 +417,8 @@ def build_html_report(shortlist: pd.DataFrame, leaderboard_rows=None) -> str:
     dominance_df = build_coin_dominance(positions_by_wallet)
     now = pd.Timestamp.utcnow()
     coin_history_df = load_coin_history()
-    dominance_html = coin_dominance_html(dominance_df, coin_history_df, now)
+    market_oi = fetch_market_oi()
+    dominance_html = coin_dominance_html(dominance_df, coin_history_df, now, market_oi=market_oi)
     save_coin_history(coin_history_df, dominance_df, now)
 
     def table_rows(df, show_label=False):
@@ -443,15 +521,19 @@ def main():
     rows = fetch_leaderboard()
     print(f"Got {len(rows)} total wallets.")
 
-    shortlist = build_shortlist(rows)
-    print(f"Shortlist after filtering: {len(shortlist)} wallets.")
+    fresh_shortlist = build_shortlist(rows)
+    print(f"Fresh shortlist after filtering: {len(fresh_shortlist)} wallets.")
 
-    if len(shortlist) == 0:
+    if len(fresh_shortlist) == 0:
         print("No wallets passed the filters — check thresholds.")
         return
 
+    shortlist = get_locked_shortlist(fresh_shortlist)
+    print(f"Tracking {len(shortlist)} wallets this run.")
+
     update_history(shortlist)
     print(f"Updated {HISTORY_PATH}")
+
 
     html = build_html_report(shortlist, rows)
     os.makedirs("docs", exist_ok=True)
