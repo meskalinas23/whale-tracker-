@@ -22,6 +22,37 @@ MIN_30D_VOLUME = 1_000_000        # skip near-inactive accounts
 SHORTLIST_SIZE = 200              # how many wallets we keep and track historically
 QUALITY_TIER_SIZE = 30            # top N of the shortlist = "Quality Whales"
 
+# ---- Manually pinned wallets ----
+# Add any wallet you specifically want tracked, with your own label.
+# These always appear in a dedicated section, regardless of whether they'd
+# pass the automatic size/ROI/volume filters.
+PINNED_WALLETS = {
+    "0xefe4c06b6d310978bead596e1798a4fc1d9d194b": "The Shorter",
+}
+
+
+def find_pinned_in_leaderboard(rows) -> dict:
+    """Match pinned wallets against the full leaderboard to pull their real stats."""
+    pinned_lower = {addr.lower(): label for addr, label in PINNED_WALLETS.items()}
+    matches = {}
+    for row in rows:
+        addr = row.get("ethAddress", "").lower()
+        if addr in pinned_lower:
+            parsed = parse_row(row)
+            if parsed:
+                parsed["label"] = pinned_lower[addr]
+                matches[addr] = parsed
+    # any pinned wallet not found on the leaderboard still gets tracked via live positions only
+    for addr, label in pinned_lower.items():
+        if addr not in matches:
+            matches[addr] = {
+                "wallet": addr, "label": label, "account_value": 0,
+                "day_pnl": 0, "day_roi": 0, "week_pnl": 0, "week_roi": 0,
+                "month_pnl": 0, "month_roi": 0, "month_volume": 0,
+                "not_on_leaderboard": True,
+            }
+    return matches
+
 HISTORY_PATH = "whale_history.csv"
 HISTORY_COLUMNS = [
     "date", "wallet", "account_value",
@@ -286,13 +317,20 @@ def coin_dominance_html(df: pd.DataFrame, history_df, now, top_n=15) -> str:
     """
 
 
-def build_html_report(shortlist: pd.DataFrame) -> str:
+def build_html_report(shortlist: pd.DataFrame, leaderboard_rows=None) -> str:
     today = dt.date.today().isoformat()
 
     quality = shortlist.head(QUALITY_TIER_SIZE)
     active = shortlist.sort_values("day_pnl", ascending=False).head(QUALITY_TIER_SIZE)
 
-    wallets_to_check = pd.concat([quality["wallet"], active["wallet"]]).unique()
+    pinned = find_pinned_in_leaderboard(leaderboard_rows or [])
+    pinned_df = pd.DataFrame(list(pinned.values())) if pinned else pd.DataFrame()
+
+    wallets_to_check = list(pd.concat([quality["wallet"], active["wallet"]]).unique())
+    for addr in pinned.keys():
+        if addr not in wallets_to_check:
+            wallets_to_check.append(addr)
+
     print(f"Fetching live positions for {len(wallets_to_check)} wallets...")
     positions_by_wallet = {}
     for w in wallets_to_check:
@@ -305,7 +343,7 @@ def build_html_report(shortlist: pd.DataFrame) -> str:
     dominance_html = coin_dominance_html(dominance_df, coin_history_df, now)
     save_coin_history(coin_history_df, dominance_df, now)
 
-    def table_rows(df):
+    def table_rows(df, show_label=False):
         rows = ""
         for _, w in df.iterrows():
             wallet = w["wallet"]
@@ -318,9 +356,23 @@ def build_html_report(shortlist: pd.DataFrame) -> str:
             account_leverage = total_position_usd / w["account_value"] if w["account_value"] > 0 else 0
             leverage_label = f"{account_leverage:.1f}x" if positions else "—"
 
+            label_html = ""
+            if show_label and w.get("label"):
+                label_html = f"<span style='background:#fff3cd; color:#856404; padding:1px 6px; border-radius:3px; font-size:0.8em; margin-left:4px;'>🏷️ {w['label']}</span>"
+
+            if w.get("not_on_leaderboard"):
+                rows += f"""
+                <tr>
+                    <td><a href="{explorer_url}" target="_blank">{short_addr}</a>{label_html}</td>
+                    <td colspan="5" style="color:#999;">not on current leaderboard — showing live positions only</td>
+                    <td>{positions_html}</td>
+                </tr>
+                """
+                continue
+
             rows += f"""
             <tr>
-                <td><a href="{explorer_url}" target="_blank">{short_addr}</a></td>
+                <td><a href="{explorer_url}" target="_blank">{short_addr}</a>{label_html}</td>
                 <td>${w['account_value']:,.0f}</td>
                 <td>{leverage_label}</td>
                 <td>{w['day_roi']*100:.1f}%</td>
@@ -334,6 +386,7 @@ def build_html_report(shortlist: pd.DataFrame) -> str:
 
     quality_html = table_rows(quality)
     active_html = table_rows(active)
+    pinned_html = table_rows(pinned_df, show_label=True) if not pinned_df.empty else ""
 
     html = f"""<!DOCTYPE html>
 <html>
@@ -358,6 +411,8 @@ def build_html_report(shortlist: pd.DataFrame) -> str:
 
     <h2>📊 Coin Dominance (aggregated across all tracked whales)</h2>
     {dominance_html}
+
+    {"<h2>📌 Pinned Whales (manually tracked)</h2><table><thead><tr><th>Wallet</th><th>Account Value</th><th>Account Leverage</th><th>24h ROI</th><th>7D ROI</th><th>30D ROI</th><th>30D Volume</th><th>Current Positions (top 3)</th></tr></thead><tbody>" + pinned_html + "</tbody></table>" if pinned_html else ""}
 
     <h2>🏆 Quality Whales (top {QUALITY_TIER_SIZE} by blended score)</h2>
     <table>
@@ -398,7 +453,7 @@ def main():
     update_history(shortlist)
     print(f"Updated {HISTORY_PATH}")
 
-    html = build_html_report(shortlist)
+    html = build_html_report(shortlist, rows)
     os.makedirs("docs", exist_ok=True)
     with open("docs/index.html", "w") as f:
         f.write(html)
