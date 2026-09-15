@@ -30,8 +30,8 @@ def test_connection():
 def test_token_list():
     """See what tokens exist on the chain - useful to find the tokenized stock contracts."""
     resp = requests.get(
-        "https://robinhoodchain.blockscout.com/api/v2/tokens",
-        params={"apikey": API_KEY},
+        f"https://api.blockscout.com/{CHAIN_ID}/api/v2/tokens/",
+        headers={"Authorization": f"Bearer {API_KEY}"},
         timeout=15,
     )
     print(f"\nToken list status: {resp.status_code}")
