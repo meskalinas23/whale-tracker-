@@ -55,7 +55,7 @@ def test_dexscreener_token_profiles():
 
 
 def recheck_token_list_with_addresses():
-    """Same token list as before, but print contract addresses this time."""
+    """Same token list as before, but print the FULL raw object for one token to see all real field names."""
     resp = requests.get(
         f"https://api.blockscout.com/{CHAIN_ID}/api/v2/tokens/",
         headers={"Authorization": f"Bearer {API_KEY}"},
@@ -66,9 +66,10 @@ def recheck_token_list_with_addresses():
         data = resp.json()
         items = data.get("items", [])
         print(f"Found {len(items)} tokens.")
-        for t in items[:15]:
-            print(f"  {t.get('symbol', '?')} | address={t.get('address', '?')} | type={t.get('type', '?')} | "
-                  f"exchange_rate={t.get('exchange_rate', 'N/A')}")
+        if items:
+            print("\nFULL raw object for first token (to see real field names):")
+            import json
+            print(json.dumps(items[0], indent=2))
     except Exception as e:
         print(f"Could not parse: {e}")
         print(resp.text[:500])
