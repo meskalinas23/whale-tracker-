@@ -21,4 +21,4 @@ jobs:
       - name: Test Robinhood Chain connection
         env:
           BLOCKSCOUT_API_KEY: ${{ secrets.BLOCKSCOUT_API_KEY }}
-        run: python rh_test.py
+        run: python rh_dex_test.py
