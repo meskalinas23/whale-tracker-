@@ -32,7 +32,7 @@ jobs:
         run: |
           git config user.name "robinhood-tracker-bot"
           git config user.email "robinhood-tracker-bot@users.noreply.github.com"
-          git add docs/robinhood.html robinhood_large_buys.csv
+          git add docs/robinhood.html
           git diff --quiet && git diff --staged --quiet || git commit -m "Update Robinhood Chain whale results"
           git fetch origin main
           git merge -X ours origin/main --no-edit || true
