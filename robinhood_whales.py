@@ -22,6 +22,29 @@ MIN_HOLDERS = 20                # skip brand-new tokens with almost no holders y
 TOP_HOLDERS_PER_TOKEN = 5        # how many top holders to show per token
 MAX_TOKENS_TO_TRACK = 15         # cap how many active tokens we deep-dive into (rate limit safety)
 
+# No official flag distinguishes memecoins from stocks/majors, so we classify
+# via curated whitelists. Anything NOT in these two lists defaults to the
+# memecoin/other bucket — which is the actual focus of this tracker.
+KNOWN_STOCK_TICKERS = {
+    "NVDA", "SPY", "TSLA", "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "META",
+    "NFLX", "AMD", "QQQ", "DIA", "IWM", "COIN", "MSTR", "PLTR", "HOOD",
+    "AVGO", "CRM", "ORCL", "INTC", "BA", "DIS", "V", "MA", "JPM", "BAC",
+    "WMT", "KO", "PEP", "MCD", "NKE", "XOM", "CVX",
+}
+KNOWN_MAJORS_AND_STABLES = {
+    "WETH", "WBTC", "CBBTC", "USDG", "USDE", "USDC", "USDT", "U", "LINK",
+    "TAO", "PENGU", "PENDLE", "ETH", "BTC", "SOL", "VIRTUAL",
+}
+
+
+def classify_token(symbol: str) -> str:
+    s = symbol.upper()
+    if s in KNOWN_STOCK_TICKERS:
+        return "stock"
+    if s in KNOWN_MAJORS_AND_STABLES:
+        return "major"
+    return "memecoin"
+
 LARGE_BUY_HISTORY_PATH = "robinhood_large_buys.csv"
 LARGE_BUY_COLUMNS = ["date", "token_symbol", "token_address", "wallet", "value_usd"]
 
@@ -79,8 +102,7 @@ def get_top_holders(token_address, limit=TOP_HOLDERS_PER_TOKEN):
 def build_html_report(active_tokens, holders_by_token) -> str:
     today = dt.date.today().isoformat()
 
-    sections = ""
-    for t in active_tokens:
+    def render_token_card(t):
         holders = holders_by_token.get(t["address"], [])
         holder_rows = ""
         for h in holders:
@@ -88,8 +110,7 @@ def build_html_report(active_tokens, holders_by_token) -> str:
             short_addr = wallet[:6] + "..." + wallet[-4:] if len(wallet) > 10 else wallet
             explorer_url = f"https://robinhoodchain.blockscout.com/address/{wallet}"
             holder_rows += f"<li><a href='{explorer_url}' target='_blank'>{short_addr}</a></li>"
-
-        sections += f"""
+        return f"""
         <div class="token-card">
             <h3>{t['symbol']} — {t['name']}</h3>
             <p>Price: ${t['exchange_rate']:,.6f} &nbsp;|&nbsp; Market Cap: ${t['market_cap']:,.0f} &nbsp;|&nbsp;
@@ -98,6 +119,14 @@ def build_html_report(active_tokens, holders_by_token) -> str:
             <ul>{holder_rows if holder_rows else '<li>Could not fetch holder data</li>'}</ul>
         </div>
         """
+
+    memecoins = [t for t in active_tokens if classify_token(t["symbol"]) == "memecoin"]
+    stocks = [t for t in active_tokens if classify_token(t["symbol"]) == "stock"]
+    majors = [t for t in active_tokens if classify_token(t["symbol"]) == "major"]
+
+    memecoin_html = "".join(render_token_card(t) for t in memecoins) or "<p>No active memecoins found this run.</p>"
+    stock_html = "".join(render_token_card(t) for t in stocks) or "<p>No active tokenized stocks found this run.</p>"
+    major_html = "".join(render_token_card(t) for t in majors) or "<p>No active majors/stablecoins found this run.</p>"
 
     html = f"""<!DOCTYPE html>
 <html>
@@ -119,11 +148,19 @@ def build_html_report(active_tokens, holders_by_token) -> str:
     </style>
 </head>
 <body>
-    <nav><a href="index.html">Hyperliquid Whales</a> | <strong>Robinhood Chain (Memecoins)</strong></nav>
-    <h1>Robinhood Chain — Memecoin/Pons Whale Tracker</h1>
+    <nav><a href="index.html">Hyperliquid Whales</a> | <strong>Robinhood Chain</strong></nav>
+    <h1>Robinhood Chain Whale Tracker</h1>
     <p class="updated">Last updated: {today}</p>
     <p>Showing tokens with 24h volume ≥ ${MIN_VOLUME_24H:,.0f} and {MIN_HOLDERS}+ holders — filters out dead/inactive launches.</p>
-    {sections if sections else "<p>No sufficiently active tokens found this run.</p>"}
+
+    <h2>🚀 Memecoins / Pons Ecosystem</h2>
+    {memecoin_html}
+
+    <h2>📈 Tokenized Stocks (TradFi)</h2>
+    {stock_html}
+
+    <h2>🪙 Majors & Stablecoins (context only)</h2>
+    {major_html}
     <p class="notes">
         "Top holders" is a size-based snapshot (who currently holds the most), not a performance ranking —
         unlike the Hyperliquid tracker, there's no official leaderboard here, so this shows current position size only.
