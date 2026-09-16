@@ -481,9 +481,12 @@ def build_html_report(shortlist: pd.DataFrame, leaderboard_rows=None) -> str:
         h2 {{ margin-top: 30px; }}
         a {{ color: #1a73e8; text-decoration: none; }}
         a:hover {{ text-decoration: underline; }}
+        nav {{ margin-bottom: 20px; }}
+        nav a {{ margin-right: 15px; }}
     </style>
 </head>
 <body>
+    <nav><strong>Hyperliquid Whales</strong> | <a href="robinhood.html">Robinhood Chain</a></nav>
     <h1>Hyperliquid Whale Tracker</h1>
     <p class="updated">Last updated: {today}</p>
 
