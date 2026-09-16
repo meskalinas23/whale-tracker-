@@ -64,6 +64,10 @@ def get_active_tokens():
         except (TypeError, ValueError):
             continue
         if volume_24h >= MIN_VOLUME_24H and holders >= MIN_HOLDERS:
+            try:
+                decimals = int(t.get("decimals") or 18)
+            except (TypeError, ValueError):
+                decimals = 18
             active.append({
                 "symbol": t.get("symbol", "?"),
                 "name": t.get("name", "?"),
@@ -72,13 +76,14 @@ def get_active_tokens():
                 "holders_count": holders,
                 "exchange_rate": float(t.get("exchange_rate") or 0),
                 "market_cap": float(t.get("circulating_market_cap") or 0),
+                "decimals": decimals,
             })
     active.sort(key=lambda x: x["volume_24h"], reverse=True)
     return active[:MAX_TOKENS_TO_TRACK]
 
 
-def get_top_holders(token_address, limit=TOP_HOLDERS_PER_TOKEN):
-    """Get the largest holders of a specific token."""
+def get_top_holders(token_address, decimals=18, exchange_rate=0.0, limit=TOP_HOLDERS_PER_TOKEN):
+    """Get the largest holders of a specific token, with real amounts and $ values."""
     try:
         resp = requests.get(
             f"{BASE_URL}/tokens/{token_address}/holders",
@@ -91,8 +96,13 @@ def get_top_holders(token_address, limit=TOP_HOLDERS_PER_TOKEN):
         holders = []
         for h in items[:limit]:
             address = h.get("address", {}).get("hash", "?")
-            value = h.get("value", "0")
-            holders.append({"wallet": address, "raw_balance": value})
+            raw_value = h.get("value", "0")
+            try:
+                amount = float(raw_value) / (10 ** decimals)
+            except (ValueError, TypeError):
+                amount = 0.0
+            value_usd = amount * exchange_rate
+            holders.append({"wallet": address, "amount": amount, "value_usd": value_usd})
         return holders
     except Exception as e:
         print(f"  could not fetch holders for {token_address}: {e}")
@@ -109,7 +119,11 @@ def build_html_report(active_tokens, holders_by_token) -> str:
             wallet = h["wallet"]
             short_addr = wallet[:6] + "..." + wallet[-4:] if len(wallet) > 10 else wallet
             explorer_url = f"https://robinhoodchain.blockscout.com/address/{wallet}"
-            holder_rows += f"<li><a href='{explorer_url}' target='_blank'>{short_addr}</a></li>"
+            pct_of_mcap = (h["value_usd"] / t["market_cap"] * 100) if t["market_cap"] > 0 else 0
+            holder_rows += (
+                f"<li><a href='{explorer_url}' target='_blank'>{short_addr}</a> — "
+                f"{h['amount']:,.2f} {t['symbol']} (${h['value_usd']:,.0f}, {pct_of_mcap:.1f}% of market cap)</li>"
+            )
         return f"""
         <div class="token-card">
             <h3>{t['symbol']} — {t['name']}</h3>
@@ -153,13 +167,15 @@ def build_html_report(active_tokens, holders_by_token) -> str:
     <p class="updated">Last updated: {today}</p>
     <p>Showing tokens with 24h volume ≥ ${MIN_VOLUME_24H:,.0f} and {MIN_HOLDERS}+ holders — filters out dead/inactive launches.</p>
 
-    <h2>🚀 Memecoins / Pons Ecosystem</h2>
+    <h2>🚀 Memecoins & New Tokens</h2>
+    <p style="color:#666; font-size:0.85em;">Anything not on our known-stock or known-major lists lands here by default — we don't verify which launchpad (Pons, LONG, Bankr, etc.) a token came from, or vet it in any way. Real volume and holder count only, nothing more.</p>
     {memecoin_html}
 
     <h2>📈 Tokenized Stocks (TradFi)</h2>
     {stock_html}
 
-    <h2>🪙 Majors & Stablecoins (context only)</h2>
+    <h2>🪙 Established Crypto & Stablecoins</h2>
+    <p style="color:#666; font-size:0.85em;">Real stablecoins (USDG, USDE) mixed with established crypto projects (LINK, TAO, PENGU) — grouped together only because neither is a memecoin or a tokenized stock, not because they're the same type of asset.</p>
     {major_html}
     <p class="notes">
         "Top holders" is a size-based snapshot (who currently holds the most), not a performance ranking —
@@ -185,7 +201,7 @@ def main():
     holders_by_token = {}
     for t in active_tokens:
         print(f"  Fetching holders for {t['symbol']}...")
-        holders_by_token[t["address"]] = get_top_holders(t["address"])
+        holders_by_token[t["address"]] = get_top_holders(t["address"], decimals=t["decimals"], exchange_rate=t["exchange_rate"])
         time.sleep(0.3)
 
     html = build_html_report(active_tokens, holders_by_token)
