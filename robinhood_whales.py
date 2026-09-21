@@ -257,7 +257,7 @@ def save_history(tokens, now):
         combined = new_df
     # keep only the last 30 days to avoid unbounded growth
     if not combined.empty:
-        combined["timestamp"] = pd.to_datetime(combined["timestamp"])
+        combined["timestamp"] = pd.to_datetime(combined["timestamp"], format="ISO8601")
         cutoff = now - pd.Timedelta(days=30)
         combined = combined[combined["timestamp"] >= cutoff]
     combined.to_csv(HISTORY_PATH, index=False)
