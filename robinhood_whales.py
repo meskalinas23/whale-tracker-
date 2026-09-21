@@ -28,7 +28,8 @@ MIN_VOLUME_MC_RATIO = 0.05      # 24h volume must be at least 5% of market cap
 MIN_LIQUIDITY_MC_RATIO = 0.05   # liquidity must be at least 5% of market cap
 MIN_HOLDERS = 100
 TOP_HOLDERS_PER_TOKEN = 5
-MAX_TOKENS_TO_ENRICH = 40        # cap how many candidates get the (slower) DexScreener + holders lookups
+MARKET_CAP_BUCKET_WIDTH = 5_000_000   # $5M-wide bands, to ensure fair representation across sizes
+TOKENS_PER_BUCKET = 5                  # take the top N (by volume) from each band, not just the first N overall
 REQUEST_PAUSE_SEC = 0.2
 
 KNOWN_STOCK_TICKERS = {
@@ -64,10 +65,23 @@ def classify_token(symbol: str) -> str:
 
 
 def get_all_tokens():
-    resp = requests.get(f"{BASE_URL}/tokens/", headers=HEADERS, timeout=20)
-    resp.raise_for_status()
-    data = resp.json()
-    return data.get("items", [])
+    """Paginate through Blockscout's full token list, not just the first page of 50."""
+    all_items = []
+    url = f"{BASE_URL}/tokens/"
+    params = {}
+    max_pages = 20  # safety cap — 20 pages x 50 = 1000 tokens, plenty for this chain's current size
+    for _ in range(max_pages):
+        resp = requests.get(url, headers=HEADERS, params=params, timeout=20)
+        resp.raise_for_status()
+        data = resp.json()
+        items = data.get("items", [])
+        all_items.extend(items)
+        next_page = data.get("next_page_params")
+        if not next_page:
+            break
+        params = next_page
+        time.sleep(0.15)
+    return all_items
 
 
 def enrich_with_dexscreener(token_address):
@@ -160,8 +174,25 @@ def run_pipeline():
         })
     counts["passed_market_cap_and_holders"] = len(stage1)
 
-    # cap how many get the expensive DexScreener + holders lookups
-    stage1_capped = stage1[:MAX_TOKENS_TO_ENRICH]
+    # Instead of just taking "the first N" (biased toward however Blockscout
+    # orders results, likely largest-first), bucket by $5M market cap bands
+    # and take the top N by volume from EACH band — ensures small/new tokens
+    # get a fair chance to be evaluated, not just already-large ones.
+    pinned_candidates = [t for t in stage1 if t["is_pinned"]]
+    non_pinned = [t for t in stage1 if not t["is_pinned"]]
+
+    buckets = {}
+    for t in non_pinned:
+        bucket_index = int(t["market_cap"] // MARKET_CAP_BUCKET_WIDTH)
+        buckets.setdefault(bucket_index, []).append(t)
+
+    selected = []
+    for bucket_index, tokens_in_bucket in buckets.items():
+        tokens_in_bucket.sort(key=lambda x: x["volume_24h"], reverse=True)
+        selected.extend(tokens_in_bucket[:TOKENS_PER_BUCKET])
+
+    stage1_capped = pinned_candidates + selected
+    counts["market_cap_buckets_used"] = len(buckets)
     counts["sent_for_enrichment"] = len(stage1_capped)
 
     # Stage 2: DexScreener enrichment (liquidity, age, buys/sells)
