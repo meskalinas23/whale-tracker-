@@ -79,7 +79,12 @@ def get_all_tokens():
         next_page = data.get("next_page_params")
         if not next_page:
             break
-        params = next_page
+        # Blockscout expects lowercase true/false, but Python's requests library
+        # sends bools as "True"/"False" (capitalized) unless converted manually
+        params = {
+            k: (str(v).lower() if isinstance(v, bool) else v)
+            for k, v in next_page.items()
+        }
         time.sleep(0.15)
     return all_items
 
