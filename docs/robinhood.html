@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Robinhood Chain Whale Tracker</title>
+    <title>Robinhood Chain Scanner</title>
     <style>
         body { font-family: -apple-system, Arial, sans-serif; max-width: 1000px; margin: 20px auto; padding: 0 15px; }
         .updated { color: #666; font-size: 0.9em; }
@@ -15,149 +15,168 @@
         .notes { color: #555; font-size: 0.85em; margin-top: 20px; }
         nav { margin-bottom: 20px; }
         nav a { margin-right: 15px; }
+        .pipeline { background: #f5f5f5; border-radius: 6px; padding: 12px 18px; font-size: 0.85em; }
+        .pipeline ul { list-style: none; padding-left: 0; }
     </style>
 </head>
 <body>
     <nav><a href="index.html">Hyperliquid Whales</a> | <strong>Robinhood Chain</strong></nav>
-    <h1>Robinhood Chain Whale Tracker</h1>
-    <p class="updated">Last updated: 2026-09-21</p>
-    <p>Showing tokens with 24h volume ≥ $50,000 and 20+ holders — filters out dead/inactive launches.</p>
+    <h1>Robinhood Chain — New Coin Scanner</h1>
+    <p class="updated">Last updated: 2026-09-21 05:38 UTC</p>
+
+    <div class="pipeline">
+        <strong>Filter pipeline (where coins get eliminated):</strong>
+        <ul><li>total tokens seen: <strong>50</strong></li><li>passed market cap and holders: <strong>24</strong></li><li>sent for enrichment: <strong>24</strong></li><li>found on dexscreener: <strong>23</strong></li><li>passed age and ratio filters: <strong>12</strong></li></ul>
+    </div>
 
     <h2>🚀 Memecoins & New Tokens</h2>
-    <p style="color:#666; font-size:0.85em;">Anything not on our known-stock or known-major lists lands here by default — we don't verify which launchpad (Pons, LONG, Bankr, etc.) a token came from, or vet it in any way. Real volume and holder count only, nothing more.</p>
+    <p style="color:#666; font-size:0.85em;">MC $100,000–$50,000,000, age ≥ 6h,
+       volume ≥ 5% of mcap, liquidity ≥ 5% of mcap,
+       100+ holders. We don't verify launchpad or vet these — filters only.</p>
     
         <div class="token-card">
-            <h3>JOHN — Little John</h3>
-            <p>Price: $0.017195 &nbsp;|&nbsp; Market Cap: $17,195,155 &nbsp;|&nbsp;
-               24h Volume: $167,501,374 &nbsp;|&nbsp; Holders: 3663</p>
+            <h3>PIPEDOG — pipedog</h3>
+            <p>Price: $0.002311 &nbsp;|&nbsp; Market Cap: $28,514,696 &nbsp;|&nbsp;
+               Age: 1305h &nbsp;|&nbsp; Holders: 8661</p>
+            <p>24h Volume: $3,054,925 (11% of mcap) &nbsp;|&nbsp;
+               Liquidity: $9,045,047 (32% of mcap) &nbsp;|&nbsp;
+               Buys/Sells 24h: 501/450</p>
             <strong>Top holders:</strong>
-            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0xFe93A86Ac9D0f724F83d3d8aC93717e30Fae4f50' target='_blank'>0xFe93...4f50</a> — 392,931,866.60 JOHN ($6,756,526, 39.3% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x23DCB391CE9c3aA92E3C43AD6FB84dbA5Bb0f04d' target='_blank'>0x23DC...f04d</a> — 20,066,647.82 JOHN ($345,049, 2.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x3C2c1981f3f467996d890E343A61996c6344236e' target='_blank'>0x3C2c...236e</a> — 12,282,114.27 JOHN ($211,193, 1.2% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xC513bA86a0c503D4d1f326d627cf3Cc213dA7db7' target='_blank'>0xC513...7db7</a> — 5,004,084.71 JOHN ($86,046, 0.5% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x7786387FE6bfBCc4Ad0a390586e010c4C010edE2' target='_blank'>0x7786...edE2</a> — 2,774,197.15 JOHN ($47,703, 0.3% of market cap)</li></ul>
+            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0xB7f10f74B39291b9290b779978e19A7637C742D6' target='_blank'>0xB7f1...42D6</a> — 1,958,769,838.69 PIPEDOG ($4,526,521, 15.9% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xa359E6190740930Bb65e611B553724b0CE73e814' target='_blank'>0xa359...e814</a> — 267,003,114.82 PIPEDOG ($617,017, 2.2% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x13B28D20cd99251546fe2090B962d33e526C33f5' target='_blank'>0x13B2...33f5</a> — 199,179,113.32 PIPEDOG ($460,283, 1.6% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x131F30C17c0b3Ff8Ee9A0A3467bB3d70531C5e7A' target='_blank'>0x131F...5e7A</a> — 136,644,258.17 PIPEDOG ($315,771, 1.1% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x8366a39CC670B4001A1121B8F6A443A643e40951' target='_blank'>0x8366...0951</a> — 115,217,034.47 PIPEDOG ($266,255, 0.9% of mcap)</li></ul>
         </div>
         
         <div class="token-card">
-            <h3>LIT — Lighter</h3>
-            <p>Price: $4.850000 &nbsp;|&nbsp; Market Cap: $1,212,072,183 &nbsp;|&nbsp;
-               24h Volume: $68,594,010 &nbsp;|&nbsp; Holders: 280</p>
+            <h3>AMC — A Meme Coin</h3>
+            <p>Price: $0.027905 &nbsp;|&nbsp; Market Cap: $27,813,482 &nbsp;|&nbsp;
+               Age: 417h &nbsp;|&nbsp; Holders: 31108</p>
+            <p>24h Volume: $4,401,975 (16% of mcap) &nbsp;|&nbsp;
+               Liquidity: $2,040,468 (7% of mcap) &nbsp;|&nbsp;
+               Buys/Sells 24h: 732/600</p>
             <strong>Top holders:</strong>
-            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0xcE4b254043E8f537a58F4b6cE6028bD7e1DB6D55' target='_blank'>0xcE4b...6D55</a> — 159,865.15 LIT ($775,346, 0.1% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x8366a39CC670B4001A1121B8F6A443A643e40951' target='_blank'>0x8366...0951</a> — 113,755.60 LIT ($551,715, 0.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x9ee3de5a5dE86bfFD54a3c128e45fcB873eDFE1f' target='_blank'>0x9ee3...FE1f</a> — 18,329.43 LIT ($88,898, 0.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xc5fBBBB35223C9E120377D2cdBdBa1F903174754' target='_blank'>0xc5fB...4754</a> — 14,997.65 LIT ($72,739, 0.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x92d435C96E63c43E12d6D0AB28f6b0B04072F765' target='_blank'>0x92d4...F765</a> — 11,693.77 LIT ($56,715, 0.0% of market cap)</li></ul>
+            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0x8366a39CC670B4001A1121B8F6A443A643e40951' target='_blank'>0x8366...0951</a> — 88,778,226.75 AMC ($2,477,368, 8.9% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x73D8bD54F7Cf5FAb43fE4Ef40A62D390644946Db' target='_blank'>0x73D8...46Db</a> — 36,461,779.62 AMC ($1,017,471, 3.7% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x0c175C6a0065EE05F871A68783D2dE432a1e6Cbe' target='_blank'>0x0c17...6Cbe</a> — 23,870,668.95 AMC ($666,114, 2.4% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xC740974F5A920e82C9bC3028d70824cE1F0061a9' target='_blank'>0xC740...61a9</a> — 15,357,258.90 AMC ($428,546, 1.5% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xDE52C75041371b5E08d8a50b82C63734850628C1' target='_blank'>0xDE52...28C1</a> — 12,999,999.76 AMC ($362,767, 1.3% of mcap)</li></ul>
         </div>
         
         <div class="token-card">
-            <h3>PONS — Pons</h3>
-            <p>Price: $0.605019 &nbsp;|&nbsp; Market Cap: $414,960,506 &nbsp;|&nbsp;
-               24h Volume: $58,772,982 &nbsp;|&nbsp; Holders: 98812</p>
+            <h3>STANDARD — STANDARD</h3>
+            <p>Price: $0.272475 &nbsp;|&nbsp; Market Cap: $25,162,694 &nbsp;|&nbsp;
+               Age: 149h &nbsp;|&nbsp; Holders: 5787</p>
+            <p>24h Volume: $4,069,175 (16% of mcap) &nbsp;|&nbsp;
+               Liquidity: $14,749,893 (59% of mcap) &nbsp;|&nbsp;
+               Buys/Sells 24h: 603/551</p>
             <strong>Top holders:</strong>
-            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0x000000000000000000000000000000000000dEaD' target='_blank'>0x0000...dEaD</a> — 314,338,141.82 PONS ($190,180,548, 45.8% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x0D0707963952f2fBA59dD06f2b425ace40b492Fe' target='_blank'>0x0D07...92Fe</a> — 34,722,310.27 PONS ($21,007,657, 5.1% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x091D1C972cb1648537a2Ba78eaBa371b1cE18336' target='_blank'>0x091D...8336</a> — 20,391,012.48 PONS ($12,336,950, 3.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xC882b111A75C0c657fC507C04FbFcD2cC984F071' target='_blank'>0xC882...F071</a> — 20,262,420.17 PONS ($12,259,149, 3.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xB995B91882F5990e5aB3Cc4700b66b20A66C4C79' target='_blank'>0xB995...4C79</a> — 18,026,700.88 PONS ($10,906,497, 2.6% of market cap)</li></ul>
+            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0x8366a39CC670B4001A1121B8F6A443A643e40951' target='_blank'>0x8366...0951</a> — 32,448,892.41 STANDARD ($8,841,512, 35.1% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x2445b02677C3E989dE3d73F211984B40bC835E56' target='_blank'>0x2445...5E56</a> — 3,237,050.33 STANDARD ($882,015, 3.5% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xBBA92286026209e652384572A2c51e52C9aADBe8' target='_blank'>0xBBA9...DBe8</a> — 1,899,484.30 STANDARD ($517,562, 2.1% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x2408cE75d217e3a70D6ca370c78C1B34D706F5a0' target='_blank'>0x2408...F5a0</a> — 1,437,915.72 STANDARD ($391,796, 1.6% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x72C2509fb0bc0284c0A5ec3d57c75ec40f519b37' target='_blank'>0x72C2...9b37</a> — 1,215,106.50 STANDARD ($331,086, 1.3% of mcap)</li></ul>
         </div>
         
         <div class="token-card">
-            <h3>CASHCAT — Cash Cat</h3>
-            <p>Price: $0.178168 &nbsp;|&nbsp; Market Cap: $175,420,308 &nbsp;|&nbsp;
-               24h Volume: $32,752,924 &nbsp;|&nbsp; Holders: 111862</p>
+            <h3>STONKBROKER — StonkBroker</h3>
+            <p>Price: $0.010581 &nbsp;|&nbsp; Market Cap: $15,953,994 &nbsp;|&nbsp;
+               Age: 1562h &nbsp;|&nbsp; Holders: 43826</p>
+            <p>24h Volume: $1,759,287 (11% of mcap) &nbsp;|&nbsp;
+               Liquidity: $2,751,829 (17% of mcap) &nbsp;|&nbsp;
+               Buys/Sells 24h: 202/73</p>
             <strong>Top holders:</strong>
-            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0x841ed663F2636863D40be4EE76243377dff13a34' target='_blank'>0x841e...3a34</a> — 115,988,407.75 CASHCAT ($20,665,423, 11.8% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x65B0141486541FD041Ecc3e9Dec797c5529B4474' target='_blank'>0x65B0...4474</a> — 44,841,693.60 CASHCAT ($7,989,355, 4.6% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x1A18a8b96eac3F980133A18402d04194f1FAA4E7' target='_blank'>0x1A18...A4E7</a> — 30,557,631.94 CASHCAT ($5,444,392, 3.1% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xA70fc67C9F69da90B63a0e4C05D229954574E313' target='_blank'>0xA70f...E313</a> — 20,656,456.97 CASHCAT ($3,680,320, 2.1% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x88D25C861938a91AF4ad57aD964a8fCc6c6351d3' target='_blank'>0x88D2...51d3</a> — 16,502,884.87 CASHCAT ($2,940,286, 1.7% of market cap)</li></ul>
+            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0x799AE26fA515ceF145e8bC8636F7fFF87B05Cf62' target='_blank'>0x799A...Cf62</a> — 1,206,665,460.00 STONKBROKER ($12,768,270, 80.0% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x8366a39CC670B4001A1121B8F6A443A643e40951' target='_blank'>0x8366...0951</a> — 145,375,683.29 STONKBROKER ($1,538,286, 9.6% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x9cd74d5980A4BF60408B9bA2B0F6a3d368EBf594' target='_blank'>0x9cd7...f594</a> — 72,350,996.47 STONKBROKER ($765,578, 4.8% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xD2671d2Bdc84CF76E97ADb0fD7bb2B54F24CBDe8' target='_blank'>0xD267...BDe8</a> — 26,614,199.65 STONKBROKER ($281,617, 1.8% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x73eF7245B40392ae8710dFB5398f270b07E20d1D' target='_blank'>0x73eF...0d1D</a> — 25,475,582.91 STONKBROKER ($269,569, 1.7% of mcap)</li></ul>
         </div>
         
         <div class="token-card">
-            <h3>1INCH — 1INCH</h3>
-            <p>Price: $0.099859 &nbsp;|&nbsp; Market Cap: $140,322,051 &nbsp;|&nbsp;
-               24h Volume: $23,277,290 &nbsp;|&nbsp; Holders: 109</p>
+            <h3>MOO — Memory cow Moo</h3>
+            <p>Price: $0.015506 &nbsp;|&nbsp; Market Cap: $15,319,051 &nbsp;|&nbsp;
+               Age: 1499h &nbsp;|&nbsp; Holders: 9581</p>
+            <p>24h Volume: $2,844,707 (19% of mcap) &nbsp;|&nbsp;
+               Liquidity: $1,243,017 (8% of mcap) &nbsp;|&nbsp;
+               Buys/Sells 24h: 222/397</p>
             <strong>Top holders:</strong>
-            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0x3fbC2BeEEC0647AC3999c67bC4eA3A3dD6a4fB85' target='_blank'>0x3fbC...fB85</a> — 33,485,118.11 1INCH ($3,343,790, 2.4% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x624227ae1d072D03Ae0361F6A71384DD92af80b4' target='_blank'>0x6242...80b4</a> — 175,829.17 1INCH ($17,558, 0.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x8366a39CC670B4001A1121B8F6A443A643e40951' target='_blank'>0x8366...0951</a> — 160,869.72 1INCH ($16,064, 0.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x2BfFd70b9b7246967357228688Ba28c75F482bc5' target='_blank'>0x2BfF...2bc5</a> — 107,165.43 1INCH ($10,701, 0.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x32Fe17E5134950Ee5050f729ce0B1Ba0F67BE62B' target='_blank'>0x32Fe...E62B</a> — 98,735.35 1INCH ($9,860, 0.0% of market cap)</li></ul>
+            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0x8366a39CC670B4001A1121B8F6A443A643e40951' target='_blank'>0x8366...0951</a> — 57,423,257.01 MOO ($890,400, 5.8% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x26D9EF1a38210e1F2b084d8F66d7cB4aF08A0c11' target='_blank'>0x26D9...0c11</a> — 25,245,074.29 MOO ($391,448, 2.6% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x75E52443465D12d5bF93763aC07bF6CF5bfd3547' target='_blank'>0x75E5...3547</a> — 21,272,179.81 MOO ($329,845, 2.2% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x730d88a10bA0EebBB8B1eEBba3a43944d7699775' target='_blank'>0x730d...9775</a> — 18,675,323.29 MOO ($289,578, 1.9% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xD5268aA859a0bD133Df643E101e72bA8F60847d1' target='_blank'>0xD526...47d1</a> — 16,570,610.83 MOO ($256,942, 1.7% of mcap)</li></ul>
         </div>
         
         <div class="token-card">
-            <h3>AI — Artificial Inu</h3>
-            <p>Price: $0.273020 &nbsp;|&nbsp; Market Cap: $270,960,437 &nbsp;|&nbsp;
-               24h Volume: $21,076,378 &nbsp;|&nbsp; Holders: 51408</p>
+            <h3>DOGO — DogBull</h3>
+            <p>Price: $0.014798 &nbsp;|&nbsp; Market Cap: $14,951,571 &nbsp;|&nbsp;
+               Age: 1002h &nbsp;|&nbsp; Holders: 20568</p>
+            <p>24h Volume: $7,766,469 (52% of mcap) &nbsp;|&nbsp;
+               Liquidity: $1,478,461 (10% of mcap) &nbsp;|&nbsp;
+               Buys/Sells 24h: 117/105</p>
             <strong>Top holders:</strong>
-            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0x8F62A08537cede87D511AcA6436274Ab4Ca080a3' target='_blank'>0x8F62...80a3</a> — 29,322,551.57 AI ($8,005,643, 3.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x8366a39CC670B4001A1121B8F6A443A643e40951' target='_blank'>0x8366...0951</a> — 27,801,285.29 AI ($7,590,307, 2.8% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x1890E719822bc704C4f117AA4109401C2BAb6f79' target='_blank'>0x1890...6f79</a> — 18,469,314.81 AI ($5,042,492, 1.9% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x7ac7398FBF5b495bC4e7683600586C6bFd84e80c' target='_blank'>0x7ac7...e80c</a> — 18,393,934.54 AI ($5,021,912, 1.9% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xb8f305F27cCC406373De0082CC06Cb1D065504eA' target='_blank'>0xb8f3...04eA</a> — 17,500,000.00 AI ($4,777,850, 1.8% of market cap)</li></ul>
+            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0x8366a39CC670B4001A1121B8F6A443A643e40951' target='_blank'>0x8366...0951</a> — 100,044,449.05 DOGO ($1,480,448, 9.9% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x986260fd57204B0732b4e9ee678fb21fA5F76EEb' target='_blank'>0x9862...6EEb</a> — 53,728,578.35 DOGO ($795,070, 5.3% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xC4e2F3D2A5D5cbC514a1E258e05085340D8f79EE' target='_blank'>0xC4e2...79EE</a> — 2,439,157.05 DOGO ($36,094, 0.2% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x317D945349a469c341cAF94ABCF68b4Ce9854b5C' target='_blank'>0x317D...4b5C</a> — 652,310.46 DOGO ($9,653, 0.1% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xC7b4bdc70Ca54E1Fa61F23A81b11435990eE9099' target='_blank'>0xC7b4...9099</a> — 646,054.59 DOGO ($9,560, 0.1% of mcap)</li></ul>
+        </div>
+        
+        <div class="token-card">
+            <h3>TENDIES — TENDIES</h3>
+            <p>Price: $0.014611 &nbsp;|&nbsp; Market Cap: $14,611,976 &nbsp;|&nbsp;
+               Age: 2262h &nbsp;|&nbsp; Holders: 20772</p>
+            <p>24h Volume: $1,743,043 (12% of mcap) &nbsp;|&nbsp;
+               Liquidity: $1,038,782 (7% of mcap) &nbsp;|&nbsp;
+               Buys/Sells 24h: 361/555</p>
+            <strong>Top holders:</strong>
+            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0x000000000000000000000000000000000000dEaD' target='_blank'>0x0000...dEaD</a> — 44,251,075.43 TENDIES ($646,550, 4.4% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x237609918F330ADD285b8bC5f8f2922283D1C4C5' target='_blank'>0x2376...C4C5</a> — 40,842,640.15 TENDIES ($596,750, 4.1% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x0da400080E7eed776a4129bbDd2b201Ec123508C' target='_blank'>0x0da4...508C</a> — 15,878,889.16 TENDIES ($232,006, 1.6% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xA51D52260a1e617db0f287b4a6A4B5FaE3948ba9' target='_blank'>0xA51D...8ba9</a> — 13,609,594.19 TENDIES ($198,849, 1.4% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x002fc5A0A9aA1364b546bdac5135850CbF98a00f' target='_blank'>0x002f...a00f</a> — 12,329,551.39 TENDIES ($180,146, 1.2% of mcap)</li></ul>
+        </div>
+        
+        <div class="token-card">
+            <h3>HOOKR — Hookr.fun</h3>
+            <p>Price: $0.014387 &nbsp;|&nbsp; Market Cap: $14,388,340 &nbsp;|&nbsp;
+               Age: 1105h &nbsp;|&nbsp; Holders: 7746</p>
+            <p>24h Volume: $2,464,520 (17% of mcap) &nbsp;|&nbsp;
+               Liquidity: $907,687 (6% of mcap) &nbsp;|&nbsp;
+               Buys/Sells 24h: 942/1027</p>
+            <strong>Top holders:</strong>
+            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0x8366a39CC670B4001A1121B8F6A443A643e40951' target='_blank'>0x8366...0951</a> — 40,252,074.84 HOOKR ($579,105, 4.0% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x5a52D4B820Ae7F02880d270562950918ACb14aA2' target='_blank'>0x5a52...4aA2</a> — 23,219,368.62 HOOKR ($334,056, 2.3% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x8bed9A9882A999748D145deCeE3b3aB748fF9ed9' target='_blank'>0x8bed...9ed9</a> — 20,000,000.00 HOOKR ($287,739, 2.0% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xc2e2255bbE89941B5c0b91589787C0e526315148' target='_blank'>0xc2e2...5148</a> — 13,999,999.78 HOOKR ($201,418, 1.4% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x215eEb8df103A1518b71A03a5a06b317c77e2a1d' target='_blank'>0x215e...2a1d</a> — 13,061,602.89 HOOKR ($187,917, 1.3% of mcap)</li></ul>
+        </div>
+        
+        <div class="token-card">
+            <h3>SPCX — Space Exploration Technologies Corp • Robinhood Token</h3>
+            <p>Price: $154.080000 &nbsp;|&nbsp; Market Cap: $10,912,377 &nbsp;|&nbsp;
+               Age: 1434h &nbsp;|&nbsp; Holders: 108477</p>
+            <p>24h Volume: $12,844,734 (118% of mcap) &nbsp;|&nbsp;
+               Liquidity: $2,460,306 (23% of mcap) &nbsp;|&nbsp;
+               Buys/Sells 24h: 9410/8657</p>
+            <strong>Top holders:</strong>
+            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0x8366a39CC670B4001A1121B8F6A443A643e40951' target='_blank'>0x8366...0951</a> — 21,504.18 SPCX ($3,313,365, 30.4% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x498752D5fa0600CBd613074C151Abe15B3FeC7CB' target='_blank'>0x4987...C7CB</a> — 8,043.47 SPCX ($1,239,338, 11.4% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xC3c9F0171490Ef0F4536fe493F3b0EbB5ee0CB5e' target='_blank'>0xC3c9...CB5e</a> — 5,372.40 SPCX ($827,779, 7.6% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xc61284332117c3FB23A2A56cceFFD07F7aF60029' target='_blank'>0xc612...0029</a> — 5,088.52 SPCX ($784,039, 7.2% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xCef7501b9B060a599a81735bEAD6641C0E6bAF46' target='_blank'>0xCef7...AF46</a> — 2,439.34 SPCX ($375,853, 3.4% of mcap)</li></ul>
+        </div>
+        
+        <div class="token-card">
+            <h3>DELTA — Delta</h3>
+            <p>Price: $0.011757 &nbsp;|&nbsp; Market Cap: $10,581,116 &nbsp;|&nbsp;
+               Age: 1231h &nbsp;|&nbsp; Holders: 16370</p>
+            <p>24h Volume: $952,056 (9% of mcap) &nbsp;|&nbsp;
+               Liquidity: $1,020,554 (10% of mcap) &nbsp;|&nbsp;
+               Buys/Sells 24h: 985/965</p>
+            <strong>Top holders:</strong>
+            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0xD0f7d8c6e9f6D80c297bEbe4F7fD1B9C8125C32F' target='_blank'>0xD0f7...C32F</a> — 100,000,000.00 DELTA ($1,175,662, 11.1% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xD64FbdA67E1015dF43Fa5e49F02cA844729E5F94' target='_blank'>0xD64F...5F94</a> — 50,641,001.52 DELTA ($595,367, 5.6% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xda4bCee76B29EFEc9697Fcf663601c2042043968' target='_blank'>0xda4b...3968</a> — 29,409,646.09 DELTA ($345,758, 3.3% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x2dBAf98620aC5Bbe3441f756fEfF82702D095b1a' target='_blank'>0x2dBA...5b1a</a> — 22,026,582.92 DELTA ($258,958, 2.4% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x551eE8420D4a1711E5f63EB47C532738940805c8' target='_blank'>0x551e...05c8</a> — 21,196,969.35 DELTA ($249,205, 2.4% of mcap)</li></ul>
         </div>
         
 
     <h2>📈 Tokenized Stocks (TradFi)</h2>
     
         <div class="token-card">
-            <h3>NVDA — NVIDIA • Robinhood Token</h3>
-            <p>Price: $223.800000 &nbsp;|&nbsp; Market Cap: $20,543,742 &nbsp;|&nbsp;
-               24h Volume: $20,150,729 &nbsp;|&nbsp; Holders: 174918</p>
+            <h3>SPY — SPDR S&P 500 ETF Trust • Robinhood Token</h3>
+            <p>Price: $766.110000 &nbsp;|&nbsp; Market Cap: $25,191,139 &nbsp;|&nbsp;
+               Age: 1654h &nbsp;|&nbsp; Holders: 70078</p>
+            <p>24h Volume: $19,646,254 (78% of mcap) &nbsp;|&nbsp;
+               Liquidity: $7,976,384 (32% of mcap) &nbsp;|&nbsp;
+               Buys/Sells 24h: 1132/666</p>
             <strong>Top holders:</strong>
-            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0x8366a39CC670B4001A1121B8F6A443A643e40951' target='_blank'>0x8366...0951</a> — 32,471.27 NVDA ($7,267,071, 35.4% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xd4EB21209C4D6093f80B5b84f5C45cc093EA14a3' target='_blank'>0xd4EB...14a3</a> — 8,617.93 NVDA ($1,928,694, 9.4% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x498752D5fa0600CBd613074C151Abe15B3FeC7CB' target='_blank'>0x4987...C7CB</a> — 4,589.44 NVDA ($1,027,116, 5.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x62AB521f71431f78ac374CdbadC6cda3c8916b6C' target='_blank'>0x62AB...6b6C</a> — 3,670.86 NVDA ($821,538, 4.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x94bAB9693Ba2f6358507eFfcbd372b0660AFfF9d' target='_blank'>0x94bA...fF9d</a> — 3,178.99 NVDA ($711,458, 3.5% of market cap)</li></ul>
+            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0x8366a39CC670B4001A1121B8F6A443A643e40951' target='_blank'>0x8366...0951</a> — 17,867.62 SPY ($13,688,566, 54.3% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xDDCBBa3666f578E3F09516f21Ff85BFee859AB5e' target='_blank'>0xDDCB...AB5e</a> — 2,201.33 SPY ($1,686,458, 6.7% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x88Ffb774b8583c1C9A2b71b7391861c0Be253993' target='_blank'>0x88Ff...3993</a> — 1,380.58 SPY ($1,057,678, 4.2% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xd005f073Fe13B46cB49D7Dfe052b62c6c16Cb357' target='_blank'>0xd005...b357</a> — 1,320.67 SPY ($1,011,775, 4.0% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x51C72848c68a965f66FA7a88855F9f7784502a7F' target='_blank'>0x51C7...2a7F</a> — 696.71 SPY ($533,756, 2.1% of mcap)</li></ul>
+        </div>
+        
+        <div class="token-card">
+            <h3>NVDA — NVIDIA • Robinhood Token</h3>
+            <p>Price: $223.410000 &nbsp;|&nbsp; Market Cap: $20,492,548 &nbsp;|&nbsp;
+               Age: 1644h &nbsp;|&nbsp; Holders: 174955</p>
+            <p>24h Volume: $21,868,303 (107% of mcap) &nbsp;|&nbsp;
+               Liquidity: $6,168,152 (30% of mcap) &nbsp;|&nbsp;
+               Buys/Sells 24h: 1049/649</p>
+            <strong>Top holders:</strong>
+            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0x8366a39CC670B4001A1121B8F6A443A643e40951' target='_blank'>0x8366...0951</a> — 32,047.13 NVDA ($7,159,649, 34.9% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xd4EB21209C4D6093f80B5b84f5C45cc093EA14a3' target='_blank'>0xd4EB...14a3</a> — 10,727.54 NVDA ($2,396,641, 11.7% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x498752D5fa0600CBd613074C151Abe15B3FeC7CB' target='_blank'>0x4987...C7CB</a> — 4,589.44 NVDA ($1,025,326, 5.0% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x62AB521f71431f78ac374CdbadC6cda3c8916b6C' target='_blank'>0x62AB...6b6C</a> — 3,515.74 NVDA ($785,452, 3.8% of mcap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x94bAB9693Ba2f6358507eFfcbd372b0660AFfF9d' target='_blank'>0x94bA...fF9d</a> — 3,174.41 NVDA ($709,194, 3.5% of mcap)</li></ul>
         </div>
         
 
     <h2>🪙 Established Crypto & Stablecoins</h2>
-    <p style="color:#666; font-size:0.85em;">Real stablecoins (USDG, USDE) mixed with established crypto projects (LINK, TAO, PENGU) — grouped together only because neither is a memecoin or a tokenized stock, not because they're the same type of asset.</p>
-    
-        <div class="token-card">
-            <h3>USDG — Global Dollar</h3>
-            <p>Price: $1.000000 &nbsp;|&nbsp; Market Cap: $3,259,580,056 &nbsp;|&nbsp;
-               24h Volume: $662,194,439 &nbsp;|&nbsp; Holders: 365373</p>
-            <strong>Top holders:</strong>
-            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0x94bAB9693Ba2f6358507eFfcbd372b0660AFfF9d' target='_blank'>0x94bA...fF9d</a> — 84,648,219.71 USDG ($84,648,220, 2.6% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x8366a39CC670B4001A1121B8F6A443A643e40951' target='_blank'>0x8366...0951</a> — 62,990,742.12 USDG ($62,990,742, 1.9% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x9D53d5E3bd5E8d4Cbfa6DB1ca238AEA02E651010' target='_blank'>0x9D53...1010</a> — 53,080,236.55 USDG ($53,080,237, 1.6% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xd4A91E5023406903afF83225186e1d1eD18CA587' target='_blank'>0xd4A9...A587</a> — 26,643,683.60 USDG ($26,643,684, 0.8% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x4FdBDaF4800fc28c22a967d23a343aCCE34315a4' target='_blank'>0x4FdB...15a4</a> — 24,466,569.69 USDG ($24,466,570, 0.8% of market cap)</li></ul>
-        </div>
-        
-        <div class="token-card">
-            <h3>WETH — WETH</h3>
-            <p>Price: $2,685.610000 &nbsp;|&nbsp; Market Cap: $92,572,646 &nbsp;|&nbsp;
-               24h Volume: $563,173,391 &nbsp;|&nbsp; Holders: 556784</p>
-            <strong>Top holders:</strong>
-            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0x52e65B17fB6E5BA00Ed806f37Afcd2DaA50271Ca' target='_blank'>0x52e6...71Ca</a> — 1,845.89 WETH ($4,957,341, 5.4% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x8366a39CC670B4001A1121B8F6A443A643e40951' target='_blank'>0x8366...0951</a> — 1,738.11 WETH ($4,667,873, 5.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xB7f10f74B39291b9290b779978e19A7637C742D6' target='_blank'>0xB7f1...42D6</a> — 1,682.73 WETH ($4,519,165, 4.9% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x71f2F1c2dc94cDaBFE29Cb355119f8683AE0969b' target='_blank'>0x71f2...969b</a> — 1,301.45 WETH ($3,495,179, 3.8% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x10CC6BD38112cAc182db90B6a71d8Bb5939526bA' target='_blank'>0x10CC...26bA</a> — 998.71 WETH ($2,682,144, 2.9% of market cap)</li></ul>
-        </div>
-        
-        <div class="token-card">
-            <h3>LINK — Chainlink</h3>
-            <p>Price: $12.740000 &nbsp;|&nbsp; Market Cap: $9,532,197,489 &nbsp;|&nbsp;
-               24h Volume: $495,307,178 &nbsp;|&nbsp; Holders: 72</p>
-            <strong>Top holders:</strong>
-            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0xf93f3eff7624DA69db24730f4fBEE84CD6Bd6DAc' target='_blank'>0xf93f...6DAc</a> — 90.15 LINK ($1,149, 0.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xF504473A5477F81c603C03CC2c169869c782d64a' target='_blank'>0xF504...d64a</a> — 38.46 LINK ($490, 0.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x8366a39CC670B4001A1121B8F6A443A643e40951' target='_blank'>0x8366...0951</a> — 15.00 LINK ($191, 0.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xae7eF20a0e12886bE1ef982262436D2B1eB086E2' target='_blank'>0xae7e...86E2</a> — 9.56 LINK ($122, 0.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xFaA722718D5157Cf5A5B1232d88203BCcECc8f48' target='_blank'>0xFaA7...8f48</a> — 2.04 LINK ($26, 0.0% of market cap)</li></ul>
-        </div>
-        
-        <div class="token-card">
-            <h3>CBBTC — Coinbase Wrapped BTC</h3>
-            <p>Price: $81,668.000000 &nbsp;|&nbsp; Market Cap: $8,055,383,763 &nbsp;|&nbsp;
-               24h Volume: $305,175,277 &nbsp;|&nbsp; Holders: 10358</p>
-            <strong>Top holders:</strong>
-            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0xD30e44aaE604B42a63f6F9A8109FD0408F35b9fb' target='_blank'>0xD30e...b9fb</a> — 13.03 CBBTC ($1,064,152, 0.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x8366a39CC670B4001A1121B8F6A443A643e40951' target='_blank'>0x8366...0951</a> — 12.53 CBBTC ($1,022,972, 0.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xD0d08887E8a5B16049534A7F3FC1De92848F5BeA' target='_blank'>0xD0d0...5BeA</a> — 2.08 CBBTC ($169,990, 0.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x934e60D1C6C34242b92159A5Bcc710FAFa50AD87' target='_blank'>0x934e...AD87</a> — 1.53 CBBTC ($125,210, 0.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x6f8Dc7122B56017c46892F91D38d871acf787f9b' target='_blank'>0x6f8D...7f9b</a> — 0.90 CBBTC ($73,099, 0.0% of market cap)</li></ul>
-        </div>
-        
-        <div class="token-card">
-            <h3>PENGU — Pudgy Penguins</h3>
-            <p>Price: $0.008167 &nbsp;|&nbsp; Market Cap: $513,317,541 &nbsp;|&nbsp;
-               24h Volume: $161,872,271 &nbsp;|&nbsp; Holders: 966</p>
-            <strong>Top holders:</strong>
-            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0xe328AeDc9DbdA7D8ACF07a3573153e814DEd3e54' target='_blank'>0xe328...3e54</a> — 16,414,360.67 PENGU ($134,050, 0.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x8366a39CC670B4001A1121B8F6A443A643e40951' target='_blank'>0x8366...0951</a> — 16,096,693.25 PENGU ($131,456, 0.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x26c2448c0038874F68cc0d388D96F8D218aF3BDF' target='_blank'>0x26c2...3BDF</a> — 940,884.94 PENGU ($7,684, 0.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xC2148f8699367f1Eb52e9d6C751D94b05b3eE2aa' target='_blank'>0xC214...E2aa</a> — 595,194.47 PENGU ($4,861, 0.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x9d207322dF64Fb6c055e424040267fe57C8BccB9' target='_blank'>0x9d20...ccB9</a> — 593,789.09 PENGU ($4,849, 0.0% of market cap)</li></ul>
-        </div>
-        
-        <div class="token-card">
-            <h3>U — United Stables</h3>
-            <p>Price: $1.000000 &nbsp;|&nbsp; Market Cap: $1,393,177,468 &nbsp;|&nbsp;
-               24h Volume: $114,075,694 &nbsp;|&nbsp; Holders: 341</p>
-            <strong>Top holders:</strong>
-            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0x28B8961B19fE06108a8c2fe6716382C161c66178' target='_blank'>0x28B8...6178</a> — 12,000,000.00 U ($12,000,000, 0.9% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x39525d91FfdcC126f052eeFEd6735FdA72ad1deE' target='_blank'>0x3952...1deE</a> — 9,761,683.79 U ($9,761,684, 0.7% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x6aba0315493b7e6989041C91181337b662fB1b90' target='_blank'>0x6aba...1b90</a> — 3,207,929.66 U ($3,207,930, 0.2% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x090f2f033c16fE92e28f0204435590548AEDc3F0' target='_blank'>0x090f...c3F0</a> — 2,990,873.85 U ($2,990,874, 0.2% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x8366a39CC670B4001A1121B8F6A443A643e40951' target='_blank'>0x8366...0951</a> — 1,980,687.70 U ($1,980,688, 0.1% of market cap)</li></ul>
-        </div>
-        
-        <div class="token-card">
-            <h3>PENDLE — Pendle</h3>
-            <p>Price: $2.770000 &nbsp;|&nbsp; Market Cap: $481,289,870 &nbsp;|&nbsp;
-               24h Volume: $69,726,751 &nbsp;|&nbsp; Holders: 438</p>
-            <strong>Top holders:</strong>
-            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0x8366a39CC670B4001A1121B8F6A443A643e40951' target='_blank'>0x8366...0951</a> — 22,719.60 PENDLE ($62,933, 0.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x7e500c6efBb00FD3227888256E477171a1304721' target='_blank'>0x7e50...4721</a> — 18,077.36 PENDLE ($50,074, 0.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xA73072adc6c34859426FcC29BC6Ca2cAC07c93c3' target='_blank'>0xA730...93c3</a> — 4,592.00 PENDLE ($12,720, 0.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x63f6D9E7d3953106bCaf98832BD9C88A54AfCc9D' target='_blank'>0x63f6...Cc9D</a> — 1,494.78 PENDLE ($4,141, 0.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x4557506d1c1F4b0893893825a2e1d7649cd2DcE6' target='_blank'>0x4557...DcE6</a> — 983.52 PENDLE ($2,724, 0.0% of market cap)</li></ul>
-        </div>
-        
-        <div class="token-card">
-            <h3>VIRTUAL — Virtuals Protocol</h3>
-            <p>Price: $0.690906 &nbsp;|&nbsp; Market Cap: $453,748,501 &nbsp;|&nbsp;
-               24h Volume: $53,579,422 &nbsp;|&nbsp; Holders: 15865</p>
-            <strong>Top holders:</strong>
-            <ul><li><a href='https://robinhoodchain.blockscout.com/address/0xd95e8e2Cd04c207625C6F23c974d365a5F3A91D3' target='_blank'>0xd95e...91D3</a> — 1,850,683.94 VIRTUAL ($1,278,649, 0.3% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xCef7501b9B060a599a81735bEAD6641C0E6bAF46' target='_blank'>0xCef7...AF46</a> — 478,585.95 VIRTUAL ($330,658, 0.1% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x7a11bC7f32AEA2f81E83DA399C70315d9662869C' target='_blank'>0x7a11...869C</a> — 403,674.94 VIRTUAL ($278,901, 0.1% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0x817f16F5D8da83d1B089B082c0172af3923618dA' target='_blank'>0x817f...18dA</a> — 259,191.26 VIRTUAL ($179,077, 0.0% of market cap)</li><li><a href='https://robinhoodchain.blockscout.com/address/0xA20b68e2e1De71F1426B546ed5514bF253215A48' target='_blank'>0xA20b...5A48</a> — 244,588.08 VIRTUAL ($168,987, 0.0% of market cap)</li></ul>
-        </div>
-        
+    <p>No qualifying majors/stablecoins this run.</p>
+
     <p class="notes">
-        "Top holders" is a size-based snapshot (who currently holds the most), not a performance ranking —
-        unlike the Hyperliquid tracker, there's no official leaderboard here, so this shows current position size only.
-        Data from Blockscout's public Robinhood Chain explorer. Not financial advice — thousands of tokens launch
-        daily on this chain and most go to zero; treat this as a discovery tool, not a signal to act on directly.
+        Data: Blockscout (holders, market cap) + DexScreener (liquidity, age, buys/sells).
+        This is a discovery/filtering tool, not vetted advice — most new tokens fail regardless of passing these filters.
+        Not financial advice.
     </p>
 </body>
 </html>
