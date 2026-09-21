@@ -2,7 +2,7 @@ name: Robinhood Chain Whale Tracker
 
 on:
   schedule:
-    - cron: "30 * * * *"
+    - cron: "*/15 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -32,8 +32,8 @@ jobs:
         run: |
           git config user.name "robinhood-tracker-bot"
           git config user.email "robinhood-tracker-bot@users.noreply.github.com"
-          git add docs/robinhood.html
-          git diff --quiet && git diff --staged --quiet || git commit -m "Update Robinhood Chain whale results"
+          git add docs/robinhood.html robinhood_token_history.csv
+          git diff --quiet && git diff --staged --quiet || git commit -m "Update Robinhood Chain scanner results"
           git fetch origin main
           git merge -X ours origin/main --no-edit || true
           git push
