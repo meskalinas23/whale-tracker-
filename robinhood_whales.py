@@ -264,6 +264,12 @@ def save_history(tokens, now):
 
 
 def build_html_report(final_tokens, holders_by_address, counts, now) -> str:
+    def market_cap_band_label(market_cap):
+        bucket_index = int(market_cap // MARKET_CAP_BUCKET_WIDTH)
+        band_low = bucket_index * MARKET_CAP_BUCKET_WIDTH
+        band_high = band_low + MARKET_CAP_BUCKET_WIDTH
+        return f"${band_low/1e6:.0f}M–${band_high/1e6:.0f}M"
+
     def render_card(t):
         holders = holders_by_address.get(t["address"], [])
         holder_rows = ""
@@ -277,12 +283,13 @@ def build_html_report(final_tokens, holders_by_address, counts, now) -> str:
                 f"{h['amount']:,.2f} {t['symbol']} (${h['value_usd']:,.0f}, {pct_of_mcap:.1f}% of mcap)</li>"
             )
         pin_badge = f"<span style='background:#fff3cd;color:#856404;padding:1px 6px;border-radius:3px;font-size:0.8em;margin-left:6px;'>📌 {t['pinned_label']}</span>" if t.get("is_pinned") and t.get("pinned_label") else ""
+        band_badge = f"<span style='background:#e8eaf6;color:#3949ab;padding:1px 6px;border-radius:3px;font-size:0.8em;margin-left:6px;'>{market_cap_band_label(t['market_cap'])}</span>"
         age_label = f"{t['age_hours']:.0f}h" if t.get("age_hours") is not None else "—"
         vol_ratio_label = f"{t.get('volume_mc_ratio', 0)*100:.0f}%" if "volume_mc_ratio" in t else "—"
         liq_ratio_label = f"{t.get('liquidity_mc_ratio', 0)*100:.0f}%" if "liquidity_mc_ratio" in t else "—"
         return f"""
         <div class="token-card">
-            <h3>{t['symbol']} — {t['name']}{pin_badge}</h3>
+            <h3>{t['symbol']} — {t['name']}{band_badge}{pin_badge}</h3>
             <p>Price: ${t['exchange_rate']:,.6f} &nbsp;|&nbsp; Market Cap: ${t['market_cap']:,.0f} &nbsp;|&nbsp;
                Age: {age_label} &nbsp;|&nbsp; Holders: {t['holders_count']}</p>
             <p>24h Volume: ${t['volume_24h']:,.0f} ({vol_ratio_label} of mcap) &nbsp;|&nbsp;
@@ -293,9 +300,9 @@ def build_html_report(final_tokens, holders_by_address, counts, now) -> str:
         </div>
         """
 
-    memecoins = [t for t in final_tokens if classify_token(t["symbol"]) == "memecoin"]
-    stocks = [t for t in final_tokens if classify_token(t["symbol"]) == "stock"]
-    majors = [t for t in final_tokens if classify_token(t["symbol"]) == "major"]
+    memecoins = sorted([t for t in final_tokens if classify_token(t["symbol"]) == "memecoin"], key=lambda t: t["market_cap"])
+    stocks = sorted([t for t in final_tokens if classify_token(t["symbol"]) == "stock"], key=lambda t: t["market_cap"])
+    majors = sorted([t for t in final_tokens if classify_token(t["symbol"]) == "major"], key=lambda t: t["market_cap"])
 
     memecoin_html = "".join(render_card(t) for t in memecoins) or "<p>No qualifying memecoins this run.</p>"
     stock_html = "".join(render_card(t) for t in stocks) or "<p>No qualifying tokenized stocks this run.</p>"
