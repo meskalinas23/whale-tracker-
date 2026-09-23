@@ -123,20 +123,34 @@ def enrich_with_dexscreener(token_address):
 
 
 def get_top_holders(token_address, decimals=18, exchange_rate=0.0, limit=TOP_HOLDERS_PER_TOKEN):
+    """Get the largest REAL WALLET holders of a token — contracts (LP pools, vesting,
+    treasury) are filtered out since they aren't a meaningful whale signal.
+    Fetches extra candidates so we still end up with `limit` real wallets after filtering."""
     try:
-        resp = requests.get(f"{BASE_URL}/tokens/{token_address}/holders", headers=HEADERS, timeout=15)
+        resp = requests.get(
+            f"{BASE_URL}/tokens/{token_address}/holders",
+            headers=HEADERS,
+            timeout=15,
+            params={"items_count": limit * 4},  # fetch extra since some will be filtered out as contracts
+        )
         resp.raise_for_status()
         data = resp.json()
         items = data.get("items", [])
         holders = []
-        for h in items[:limit]:
-            address = h.get("address", {}).get("hash", "?")
+        for h in items:
+            address_obj = h.get("address", {}) or {}
+            is_contract = bool(address_obj.get("is_contract", False))
+            if is_contract:
+                continue  # skip LP pools, vesting contracts, etc. — not real trader whales
+            address = address_obj.get("hash", "?")
             raw_value = h.get("value", "0")
             try:
                 amount = float(raw_value) / (10 ** decimals)
             except (ValueError, TypeError):
                 amount = 0.0
             holders.append({"wallet": address, "amount": amount, "value_usd": amount * exchange_rate})
+            if len(holders) >= limit:
+                break
         return holders
     except Exception as e:
         print(f"    could not fetch holders for {token_address}: {e}")
@@ -263,7 +277,9 @@ def save_history(tokens, now):
     combined.to_csv(HISTORY_PATH, index=False)
 
 
-def build_html_report(final_tokens, holders_by_address, counts, now) -> str:
+def build_html_report(final_tokens, holders_by_address, counts, now, wallet_overlap=None) -> str:
+    wallet_overlap = wallet_overlap or {}
+
     def market_cap_band_label(market_cap):
         bucket_index = int(market_cap // MARKET_CAP_BUCKET_WIDTH)
         band_low = bucket_index * MARKET_CAP_BUCKET_WIDTH
@@ -278,9 +294,15 @@ def build_html_report(final_tokens, holders_by_address, counts, now) -> str:
             short_addr = wallet[:6] + "..." + wallet[-4:] if len(wallet) > 10 else wallet
             explorer_url = f"https://robinhoodchain.blockscout.com/address/{wallet}"
             pct_of_mcap = (h["value_usd"] / t["market_cap"] * 100) if t["market_cap"] > 0 else 0
+            overlap_symbols = wallet_overlap.get(wallet)
+            overlap_note = ""
+            if overlap_symbols:
+                others = [s for s in overlap_symbols if s != t["symbol"]]
+                if others:
+                    overlap_note = f" <span style='color:#c2185b; font-weight:bold;'>🔁 also holds: {', '.join(others)}</span>"
             holder_rows += (
                 f"<li><a href='{explorer_url}' target='_blank'>{short_addr}</a> — "
-                f"{h['amount']:,.2f} {t['symbol']} (${h['value_usd']:,.0f}, {pct_of_mcap:.1f}% of mcap)</li>"
+                f"{h['amount']:,.2f} {t['symbol']} (${h['value_usd']:,.0f}, {pct_of_mcap:.1f}% of mcap){overlap_note}</li>"
             )
         pin_badge = f"<span style='background:#fff3cd;color:#856404;padding:1px 6px;border-radius:3px;font-size:0.8em;margin-left:6px;'>📌 {t['pinned_label']}</span>" if t.get("is_pinned") and t.get("pinned_label") else ""
         band_badge = f"<span style='background:#e8eaf6;color:#3949ab;padding:1px 6px;border-radius:3px;font-size:0.8em;margin-left:6px;'>{market_cap_band_label(t['market_cap'])}</span>"
@@ -383,10 +405,22 @@ def main():
         holders_by_address[t["address"]] = get_top_holders(t["address"], decimals=t["decimals"], exchange_rate=t["exchange_rate"])
         time.sleep(REQUEST_PAUSE_SEC)
 
+    # Cross-token overlap: which wallets show up as a top holder in MORE than one
+    # tracked token this run? Free — just reusing data we already fetched.
+    wallet_to_symbols = {}
+    token_address_to_symbol = {t["address"]: t["symbol"] for t in final_tokens}
+    for token_address, holders in holders_by_address.items():
+        symbol = token_address_to_symbol.get(token_address, "?")
+        for h in holders:
+            wallet_to_symbols.setdefault(h["wallet"], set()).add(symbol)
+    wallet_overlap = {w: sorted(syms) for w, syms in wallet_to_symbols.items() if len(syms) > 1}
+    if wallet_overlap:
+        print(f"Found {len(wallet_overlap)} wallet(s) holding multiple tracked tokens.")
+
     save_history(final_tokens, now)
     print(f"Updated {HISTORY_PATH}")
 
-    html = build_html_report(final_tokens, holders_by_address, counts, now)
+    html = build_html_report(final_tokens, holders_by_address, counts, now, wallet_overlap=wallet_overlap)
     os.makedirs("docs", exist_ok=True)
     with open("docs/robinhood.html", "w") as f:
         f.write(html)
