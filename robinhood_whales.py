@@ -177,6 +177,8 @@ def run_pipeline():
         is_pinned = address in PINNED_TOKENS
         if is_pinned:
             pass  # pinned tokens skip the stage-1 filters entirely
+        elif classify_token(t.get("symbol", "")) == "stock":
+            continue  # tokenized stocks aren't the focus here — excluded entirely, not just re-sectioned
         elif not (MIN_MARKET_CAP <= market_cap <= MAX_MARKET_CAP):
             continue
         elif holders < MIN_HOLDERS:
@@ -323,11 +325,9 @@ def build_html_report(final_tokens, holders_by_address, counts, now, wallet_over
         """
 
     memecoins = sorted([t for t in final_tokens if classify_token(t["symbol"]) == "memecoin"], key=lambda t: t["market_cap"])
-    stocks = sorted([t for t in final_tokens if classify_token(t["symbol"]) == "stock"], key=lambda t: t["market_cap"])
     majors = sorted([t for t in final_tokens if classify_token(t["symbol"]) == "major"], key=lambda t: t["market_cap"])
 
     memecoin_html = "".join(render_card(t) for t in memecoins) or "<p>No qualifying memecoins this run.</p>"
-    stock_html = "".join(render_card(t) for t in stocks) or "<p>No qualifying tokenized stocks this run.</p>"
     major_html = "".join(render_card(t) for t in majors) or "<p>No qualifying majors/stablecoins this run.</p>"
 
     pipeline_html = "".join(f"<li>{k.replace('_', ' ')}: <strong>{v}</strong></li>" for k, v in counts.items())
@@ -366,11 +366,8 @@ def build_html_report(final_tokens, holders_by_address, counts, now, wallet_over
     <h2>🚀 Memecoins & New Tokens</h2>
     <p style="color:#666; font-size:0.85em;">MC ${MIN_MARKET_CAP:,.0f}–${MAX_MARKET_CAP:,.0f}, age ≥ {MIN_AGE_HOURS}h,
        volume ≥ {MIN_VOLUME_MC_RATIO*100:.0f}% of mcap, liquidity ≥ {MIN_LIQUIDITY_MC_RATIO*100:.0f}% of mcap,
-       {MIN_HOLDERS}+ holders. We don't verify launchpad or vet these — filters only.</p>
+       {MIN_HOLDERS}+ holders. Tokenized stocks are excluded entirely. We don't verify launchpad or vet these — filters only.</p>
     {memecoin_html}
-
-    <h2>📈 Tokenized Stocks (TradFi)</h2>
-    {stock_html}
 
     <h2>🪙 Established Crypto & Stablecoins</h2>
     {major_html}
