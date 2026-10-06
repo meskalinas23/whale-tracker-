@@ -43,6 +43,14 @@ KNOWN_MAJORS_AND_STABLES = {
     "TAO", "PENGU", "PENDLE", "ETH", "BTC", "SOL", "VIRTUAL",
 }
 
+# Contract creator/deployer addresses confirmed (via discover_deployer.py) to be
+# used by Robinhood for tokenized stock contracts on this chain. Checked per-token
+# as a backstop for tickers that slip past KNOWN_STOCK_TICKERS (e.g. new listings).
+KNOWN_STOCK_DEPLOYERS = {
+    "0x4783C67b63dE2B358Ac5951a7D41F47A38F3C046",  # deployed SPY, NVDA
+    "0xD9eC2db5f3D1b236843925949fe5bd8a3836FCcB",  # deployed TSLA
+}
+
 # Manually pinned tokens: always tracked regardless of filters, with your own label.
 PINNED_TOKENS = {
     # "0xTOKENADDRESS": "Watching this one",
@@ -62,6 +70,25 @@ def classify_token(symbol: str) -> str:
     if s in KNOWN_MAJORS_AND_STABLES:
         return "major"
     return "memecoin"
+
+
+def get_creator_address(token_address):
+    """Look up the contract creator/deployer address for a token via Blockscout.
+    Used to catch tokenized stocks that slip past the ticker whitelist, since
+    Robinhood reuses a small, finite set of deployer contracts for all its
+    tokenized-stock listings."""
+    try:
+        resp = requests.get(
+            f"{BASE_URL}/addresses/{token_address}",
+            headers=HEADERS,
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return data.get("creator_address_hash")
+    except Exception as e:
+        print(f"    could not fetch creator address for {token_address}: {e}")
+        return None
 
 
 def get_all_tokens():
@@ -215,6 +242,25 @@ def run_pipeline():
     stage1_capped = pinned_candidates + selected
     counts["market_cap_buckets_used"] = len(buckets)
     counts["sent_for_enrichment"] = len(stage1_capped)
+
+    # Stage 1b: deployer-address backstop. Catches tokenized stocks whose ticker
+    # isn't (yet) in KNOWN_STOCK_TICKERS, by checking the contract creator against
+    # known Robinhood stock-deployer addresses. Only runs on the small bucketed
+    # batch, not the full token list, to keep extra API calls cheap.
+    deployer_filtered = []
+    excluded_by_deployer = 0
+    for t in stage1_capped:
+        if t["is_pinned"]:
+            deployer_filtered.append(t)
+            continue
+        creator = get_creator_address(t["address"])
+        time.sleep(REQUEST_PAUSE_SEC)
+        if creator and creator in KNOWN_STOCK_DEPLOYERS:
+            excluded_by_deployer += 1
+            continue
+        deployer_filtered.append(t)
+    counts["excluded_by_deployer_address"] = excluded_by_deployer
+    stage1_capped = deployer_filtered
 
     # Stage 2: DexScreener enrichment (liquidity, age, buys/sells)
     stage2 = []
