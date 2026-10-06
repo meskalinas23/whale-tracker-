@@ -14,11 +14,13 @@ import requests
 import pandas as pd
 
 API_KEY = os.environ.get("BLOCKSCOUT_API_KEY")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 CHAIN_ID = "4663"
 BASE_URL = f"https://api.blockscout.com/{CHAIN_ID}/api/v2"
 HEADERS = {"Authorization": f"Bearer {API_KEY}"}
 DEXSCREENER_TOKENS_URL = "https://api.dexscreener.com/latest/dex/tokens"
 DEX_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; screener-bot/1.0)"}
+OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions"
 
 # ---- Filters ----
 MIN_MARKET_CAP = 100_000
@@ -61,6 +63,9 @@ HISTORY_COLUMNS = [
     "timestamp", "symbol", "address", "market_cap", "volume_24h", "liquidity_usd",
     "holders_count", "age_hours", "buys_24h", "sells_24h", "exchange_rate",
 ]
+
+DESCRIPTIONS_PATH = "robinhood_token_descriptions.csv"
+DESCRIPTIONS_COLUMNS = ["address", "symbol", "description", "generated_at"]
 
 
 def classify_token(symbol: str) -> str:
@@ -182,6 +187,79 @@ def get_top_holders(token_address, decimals=18, exchange_rate=0.0, limit=TOP_HOL
     except Exception as e:
         print(f"    could not fetch holders for {token_address}: {e}")
         return []
+
+
+def load_description_cache():
+    """address -> description, loaded from disk. Returns {} if no cache file yet."""
+    try:
+        df = pd.read_csv(DESCRIPTIONS_PATH)
+        return dict(zip(df["address"], df["description"]))
+    except FileNotFoundError:
+        return {}
+    except Exception as e:
+        print(f"  could not load description cache: {e}")
+        return {}
+
+
+def save_description_cache(cache_rows):
+    """cache_rows: list of dicts with address/symbol/description/generated_at.
+    Merges with whatever's already on disk, keyed by address (newest wins)."""
+    new_df = pd.DataFrame(cache_rows, columns=DESCRIPTIONS_COLUMNS)
+    try:
+        existing = pd.read_csv(DESCRIPTIONS_PATH)
+        combined = pd.concat([existing, new_df], ignore_index=True)
+        combined = combined.drop_duplicates(subset="address", keep="last")
+    except FileNotFoundError:
+        combined = new_df
+    combined.to_csv(DESCRIPTIONS_PATH, index=False)
+
+
+def generate_description(symbol, name):
+    """Ask OpenAI for a 5-10 sentence, investor-pitch-style explanation of the token,
+    based only on its name/symbol (we have no project docs/whitepaper to feed it).
+    Explicitly told not to invent facts — should say plainly when it doesn't
+    recognize the project and call it a speculative/meme token in that case."""
+    if not OPENAI_API_KEY:
+        return "(no OPENAI_API_KEY set — description not generated)"
+
+    prompt = f"""You're explaining a cryptocurrency token to a potential investor, in 5 to 10 sentences.
+
+Token symbol: {symbol}
+Token name: {name}
+Context: it's a small-cap token on Robinhood Chain, an EVM-compatible chain that hosts both
+tokenized real-world stocks and new memecoins launched via the "Pons" launchpad.
+
+Cover:
+- What this token most likely is: a memecoin/joke token, a utility or project token, etc. — based on
+  what its name and symbol suggest.
+- Any theme, narrative, or community angle implied by the name.
+- A clear, honest caveat: if you don't actually recognize this as a known project, say so plainly
+  and describe it as a speculative/meme token based on naming alone — do NOT invent a team,
+  roadmap, product, or specific facts you aren't confident about.
+
+Write it as plain, direct prose an investor can skim quickly. No headers, no bullet points."""
+
+    try:
+        resp = requests.post(
+            OPENAI_CHAT_URL,
+            headers={
+                "Authorization": f"Bearer {OPENAI_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "gpt-4o-mini",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.4,
+                "max_tokens": 350,
+            },
+            timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return data["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        print(f"    OpenAI description generation failed for {symbol}: {e}")
+        return None
 
 
 def run_pipeline():
@@ -325,8 +403,9 @@ def save_history(tokens, now):
     combined.to_csv(HISTORY_PATH, index=False)
 
 
-def build_html_report(final_tokens, holders_by_address, counts, now, wallet_overlap=None) -> str:
+def build_html_report(final_tokens, holders_by_address, counts, now, wallet_overlap=None, descriptions=None) -> str:
     wallet_overlap = wallet_overlap or {}
+    descriptions = descriptions or {}
 
     def market_cap_band_label(market_cap):
         bucket_index = int(market_cap // MARKET_CAP_BUCKET_WIDTH)
@@ -357,6 +436,11 @@ def build_html_report(final_tokens, holders_by_address, counts, now, wallet_over
         age_label = f"{t['age_hours']:.0f}h" if t.get("age_hours") is not None else "—"
         vol_ratio_label = f"{t.get('volume_mc_ratio', 0)*100:.0f}%" if "volume_mc_ratio" in t else "—"
         liq_ratio_label = f"{t.get('liquidity_mc_ratio', 0)*100:.0f}%" if "liquidity_mc_ratio" in t else "—"
+        description = descriptions.get(t["address"])
+        description_html = (
+            f"<p style='background:#f9f9f9; border-left:3px solid #bbb; padding:8px 12px; margin-top:10px; font-size:0.9em; color:#333;'>{description}</p>"
+            if description else ""
+        )
         return f"""
         <div class="token-card">
             <h3>{t['symbol']} — {t['name']}{band_badge}{pin_badge}</h3>
@@ -365,6 +449,7 @@ def build_html_report(final_tokens, holders_by_address, counts, now, wallet_over
             <p>24h Volume: ${t['volume_24h']:,.0f} ({vol_ratio_label} of mcap) &nbsp;|&nbsp;
                Liquidity: ${t.get('liquidity_usd', 0):,.0f} ({liq_ratio_label} of mcap) &nbsp;|&nbsp;
                Buys/Sells 24h: {t.get('buys_24h', 0)}/{t.get('sells_24h', 0)}</p>
+            {description_html}
             <strong>Top holders:</strong>
             <ul>{holder_rows if holder_rows else '<li>Could not fetch holder data</li>'}</ul>
         </div>
@@ -412,7 +497,8 @@ def build_html_report(final_tokens, holders_by_address, counts, now, wallet_over
     <h2>🚀 Memecoins & New Tokens</h2>
     <p style="color:#666; font-size:0.85em;">MC ${MIN_MARKET_CAP:,.0f}–${MAX_MARKET_CAP:,.0f}, age ≥ {MIN_AGE_HOURS}h,
        volume ≥ {MIN_VOLUME_MC_RATIO*100:.0f}% of mcap, liquidity ≥ {MIN_LIQUIDITY_MC_RATIO*100:.0f}% of mcap,
-       {MIN_HOLDERS}+ holders. Tokenized stocks are excluded entirely. We don't verify launchpad or vet these — filters only.</p>
+       {MIN_HOLDERS}+ holders. Tokenized stocks are excluded entirely. We don't verify launchpad or vet these — filters only.
+       Descriptions below are AI-generated from the token's name/symbol alone — treat as a guess, not verified fact.</p>
     {memecoin_html}
 
     <h2>🪙 Established Crypto & Stablecoins</h2>
@@ -434,7 +520,7 @@ def main():
         print("ERROR: BLOCKSCOUT_API_KEY not set.")
         return
 
-    now = pd.Timestamp.utcnow()
+    now = pd.Timestamp.now("UTC")
     print("Running filter pipeline...")
     final_tokens, counts = run_pipeline()
 
@@ -460,10 +546,29 @@ def main():
     if wallet_overlap:
         print(f"Found {len(wallet_overlap)} wallet(s) holding multiple tracked tokens.")
 
+    # Descriptions: generate once per token address, cached on disk forever after.
+    description_cache = load_description_cache()
+    new_cache_rows = []
+    for t in final_tokens:
+        if t["address"] in description_cache:
+            continue
+        print(f"  generating description for {t['symbol']}...")
+        desc = generate_description(t["symbol"], t["name"])
+        if desc:
+            description_cache[t["address"]] = desc
+            new_cache_rows.append({
+                "address": t["address"], "symbol": t["symbol"],
+                "description": desc, "generated_at": now.isoformat(),
+            })
+        time.sleep(REQUEST_PAUSE_SEC)
+    if new_cache_rows:
+        save_description_cache(new_cache_rows)
+        print(f"Generated {len(new_cache_rows)} new description(s), cached to {DESCRIPTIONS_PATH}")
+
     save_history(final_tokens, now)
     print(f"Updated {HISTORY_PATH}")
 
-    html = build_html_report(final_tokens, holders_by_address, counts, now, wallet_overlap=wallet_overlap)
+    html = build_html_report(final_tokens, holders_by_address, counts, now, wallet_overlap=wallet_overlap, descriptions=description_cache)
     os.makedirs("docs", exist_ok=True)
     with open("docs/robinhood.html", "w") as f:
         f.write(html)
