@@ -14,13 +14,13 @@ import requests
 import pandas as pd
 
 API_KEY = os.environ.get("BLOCKSCOUT_API_KEY")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 CHAIN_ID = "4663"
 BASE_URL = f"https://api.blockscout.com/{CHAIN_ID}/api/v2"
 HEADERS = {"Authorization": f"Bearer {API_KEY}"}
 DEXSCREENER_TOKENS_URL = "https://api.dexscreener.com/latest/dex/tokens"
 DEX_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; screener-bot/1.0)"}
-OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions"
+GEMINI_CHAT_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
 # ---- Filters ----
 MIN_MARKET_CAP = 100_000
@@ -215,12 +215,12 @@ def save_description_cache(cache_rows):
 
 
 def generate_description(symbol, name):
-    """Ask OpenAI for a 5-10 sentence, investor-pitch-style explanation of the token,
-    based only on its name/symbol (we have no project docs/whitepaper to feed it).
-    Explicitly told not to invent facts — should say plainly when it doesn't
-    recognize the project and call it a speculative/meme token in that case."""
-    if not OPENAI_API_KEY:
-        return "(no OPENAI_API_KEY set — description not generated)"
+    """Ask Gemini (free tier) for a 5-10 sentence, investor-pitch-style explanation
+    of the token, based only on its name/symbol (we have no project docs/whitepaper
+    to feed it). Explicitly told not to invent facts — should say plainly when it
+    doesn't recognize the project and call it a speculative/meme token in that case."""
+    if not GEMINI_API_KEY:
+        return "(no GEMINI_API_KEY set — description not generated)"
 
     prompt = f"""You're explaining a cryptocurrency token to a potential investor, in 5 to 10 sentences.
 
@@ -241,24 +241,28 @@ Write it as plain, direct prose an investor can skim quickly. No headers, no bul
 
     try:
         resp = requests.post(
-            OPENAI_CHAT_URL,
-            headers={
-                "Authorization": f"Bearer {OPENAI_API_KEY}",
-                "Content-Type": "application/json",
-            },
+            GEMINI_CHAT_URL,
+            headers={"Content-Type": "application/json"},
+            params={"key": GEMINI_API_KEY},
             json={
-                "model": "gpt-4o-mini",
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.4,
-                "max_tokens": 350,
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.4, "maxOutputTokens": 400},
             },
             timeout=30,
         )
         resp.raise_for_status()
         data = resp.json()
-        return data["choices"][0]["message"]["content"].strip()
+        candidates = data.get("candidates") or []
+        if not candidates:
+            print(f"    Gemini returned no candidates for {symbol}: {data}")
+            return None
+        parts = candidates[0].get("content", {}).get("parts", [])
+        if not parts:
+            print(f"    Gemini returned no text parts for {symbol}: {candidates[0]}")
+            return None
+        return parts[0].get("text", "").strip()
     except Exception as e:
-        print(f"    OpenAI description generation failed for {symbol}: {e}")
+        print(f"    Gemini description generation failed for {symbol}: {e}")
         return None
 
 
