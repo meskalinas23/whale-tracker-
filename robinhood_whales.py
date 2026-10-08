@@ -77,18 +77,39 @@ def classify_token(symbol: str) -> str:
     return "memecoin"
 
 
+def blockscout_get(url, params=None, timeout=20, max_retries=4):
+    """GET against Blockscout with retry + exponential backoff. Blockscout's free/shared
+    tier intermittently returns 502/503/504 under load — these are transient, so we
+    retry a few times with increasing delay before giving up, instead of crashing the
+    whole run on one bad request."""
+    last_exc = None
+    for attempt in range(max_retries):
+        try:
+            resp = requests.get(url, headers=HEADERS, params=params, timeout=timeout)
+            if resp.status_code in (502, 503, 504):
+                raise requests.exceptions.HTTPError(
+                    f"{resp.status_code} Server Error (transient)", response=resp
+                )
+            resp.raise_for_status()
+            return resp
+        except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout) as e:
+            last_exc = e
+            if attempt < max_retries - 1:
+                wait = 2 ** attempt  # 1s, 2s, 4s, 8s...
+                print(f"    Blockscout request failed ({e}), retrying in {wait}s... (attempt {attempt + 1}/{max_retries})")
+                time.sleep(wait)
+            else:
+                raise last_exc
+
+
 def get_creator_address(token_address):
     """Look up the contract creator/deployer address for a token via Blockscout.
     Used to catch tokenized stocks that slip past the ticker whitelist, since
     Robinhood reuses a small, finite set of deployer contracts for all its
     tokenized-stock listings."""
     try:
-        resp = requests.get(
-            f"{BASE_URL}/addresses/{token_address}",
-            headers=HEADERS,
-            timeout=15,
-        )
-        resp.raise_for_status()
+        resp = blockscout_get(f"{BASE_URL}/addresses/{token_address}", timeout=15)
         data = resp.json()
         return data.get("creator_address_hash")
     except Exception as e:
@@ -102,9 +123,14 @@ def get_all_tokens():
     url = f"{BASE_URL}/tokens/"
     params = {}
     max_pages = 20  # safety cap — 20 pages x 50 = 1000 tokens, plenty for this chain's current size
-    for _ in range(max_pages):
-        resp = requests.get(url, headers=HEADERS, params=params, timeout=20)
-        resp.raise_for_status()
+    for page_num in range(max_pages):
+        try:
+            resp = blockscout_get(url, params=params, timeout=20)
+        except Exception as e:
+            # Blockscout kept failing after retries on this page — return what we
+            # already have rather than crashing the whole run and producing nothing.
+            print(f"  giving up on page {page_num + 1} after retries ({e}); continuing with {len(all_items)} tokens collected so far")
+            break
         data = resp.json()
         items = data.get("items", [])
         all_items.extend(items)
@@ -159,13 +185,11 @@ def get_top_holders(token_address, decimals=18, exchange_rate=0.0, limit=TOP_HOL
     treasury) are filtered out since they aren't a meaningful whale signal.
     Fetches extra candidates so we still end up with `limit` real wallets after filtering."""
     try:
-        resp = requests.get(
+        resp = blockscout_get(
             f"{BASE_URL}/tokens/{token_address}/holders",
-            headers=HEADERS,
-            timeout=15,
             params={"items_count": limit * 4},  # fetch extra since some will be filtered out as contracts
+            timeout=15,
         )
-        resp.raise_for_status()
         data = resp.json()
         items = data.get("items", [])
         holders = []
