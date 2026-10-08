@@ -26,14 +26,15 @@ jobs:
       - name: Track Robinhood Chain whales
         env:
           BLOCKSCOUT_API_KEY: ${{ secrets.BLOCKSCOUT_API_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python robinhood_whales.py
 
       - name: Commit and push results
         run: |
           git config user.name "robinhood-tracker-bot"
           git config user.email "robinhood-tracker-bot@users.noreply.github.com"
-          git add docs/robinhood.html robinhood_token_history.csv robinhood_token_descriptions.csv
+          git add docs/robinhood.html robinhood_token_history.csv
+          if [ -f robinhood_token_descriptions.csv ]; then git add robinhood_token_descriptions.csv; fi
           git diff --quiet && git diff --staged --quiet || git commit -m "Update Robinhood Chain scanner results"
           git fetch origin main
           git merge -X ours origin/main --no-edit || true
