@@ -274,6 +274,11 @@ Write it as plain, direct prose an investor can skim quickly. No headers, no bul
             },
             timeout=30,
         )
+        if not resp.ok:
+            # print the actual response body — Google's error detail (API not enabled,
+            # bad key, wrong model, etc.) is in here, but raise_for_status() alone
+            # would hide it and just say "404 Not Found"
+            print(f"    Gemini HTTP {resp.status_code} for {symbol}: {resp.text[:500]}")
         resp.raise_for_status()
         data = resp.json()
         candidates = data.get("candidates") or []
