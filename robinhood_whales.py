@@ -20,7 +20,7 @@ BASE_URL = f"https://api.blockscout.com/{CHAIN_ID}/api/v2"
 HEADERS = {"Authorization": f"Bearer {API_KEY}"}
 DEXSCREENER_TOKENS_URL = "https://api.dexscreener.com/latest/dex/tokens"
 DEX_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; screener-bot/1.0)"}
-GEMINI_CHAT_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+GEMINI_CHAT_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
 
 # ---- Filters ----
 MIN_MARKET_CAP = 100_000
