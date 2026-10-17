@@ -239,58 +239,102 @@ def save_description_cache(cache_rows):
     combined.to_csv(DESCRIPTIONS_PATH, index=False)
 
 
-def pick_gemini_model():
-    """Ask Google which models this API key can actually call, and pick a fast 'flash'
-    one. Model names get retired/renamed often (gemini-1.5-flash and 2.0-flash both
-    404'd for this key), so we look it up live instead of hardcoding a name.
-    Prints the full list once per run so the Actions log shows what's available."""
-    if "name" in _gemini_model_cache:
-        return _gemini_model_cache["name"]
-    chosen = None
+# Preferred Gemini models, best first. gemini-2.5-flash has free-tier quota; some newer
+# or experimental models on the account's list have a free quota of 0 and always 429.
+GEMINI_MODEL_PREFERENCE = [
+    "gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite",
+    "gemini-flash-lite-latest", "gemini-3.5-flash", "gemini-3.1-flash-lite",
+    "gemini-3.5-flash-lite",
+]
+GEMINI_SKIP_WORDS = ("preview", "exp", "thinking", "image", "tts", "audio", "live",
+                     "robotics", "embedding", "omni", "transcribe", "computer-use",
+                     "customtools", "lyria", "nano", "banana", "gemma", "pro")
+DESCRIPTION_PAUSE_SEC = 7   # free tier allows roughly 10 requests/minute; stay under it
+_gemini_dead_models = set()  # models that returned "no quota"/404 this run, so we skip them
+
+
+def get_gemini_candidates():
+    """Ask Google which models this API key can call, then return them in the order we
+    want to try them (known free-tier-friendly flash models first). Model names get
+    retired and renamed often, so this is looked up live. The full list is printed once
+    per run so the Actions log shows what's available."""
+    if "list" in _gemini_model_cache:
+        return _gemini_model_cache["list"]
+    ordered = []
     try:
         resp = requests.get(
             f"{GEMINI_BASE_URL}/models",
             headers={"x-goog-api-key": GEMINI_API_KEY},
-            params={"pageSize": 100},
+            params={"pageSize": 200},
             timeout=20,
         )
         if not resp.ok:
-            print(f"    Gemini model list failed: HTTP {resp.status_code}: {resp.text[:500]}")
+            print(f"    Gemini model list failed: HTTP {resp.status_code}: {resp.text[:300]}")
         else:
-            models = [
+            available = [
                 m["name"].replace("models/", "")
                 for m in resp.json().get("models", [])
                 if "generateContent" in m.get("supportedGenerationMethods", [])
             ]
-            print(f"    Gemini models available for generateContent: {', '.join(models) or 'none'}")
-            skip_words = ("lite", "preview", "exp", "thinking", "image", "tts", "audio", "live", "robotics", "embedding")
-            preferred = [m for m in models if "flash" in m and not any(w in m for w in skip_words)]
-            # newest-looking first (e.g. gemini-2.5-flash before gemini-2.0-flash)
-            preferred.sort(reverse=True)
-            if preferred:
-                chosen = preferred[0]
-            else:
-                fallback = [m for m in models if "gemini" in m and "embedding" not in m]
-                chosen = fallback[0] if fallback else None
+            ordered = [m for m in GEMINI_MODEL_PREFERENCE if m in available]
+            extras = sorted(
+                m for m in available
+                if "flash" in m and m not in ordered and not any(w in m for w in GEMINI_SKIP_WORDS)
+            )
+            ordered += extras
+            print(f"    Gemini models to try, in order: {', '.join(ordered) or 'none found'}")
     except Exception as e:
         print(f"    Gemini model lookup failed: {e}")
-    if chosen:
-        print(f"    Using Gemini model: {chosen}")
-    _gemini_model_cache["name"] = chosen
-    return chosen
+    _gemini_model_cache["list"] = ordered
+    return ordered
+
+
+def _call_gemini(model, prompt):
+    """One generateContent call. Returns (text_or_None, status) where status is
+    'ok', 'dead' (model unusable for this key: 404, 403, or free quota 0), 'retry'
+    (temporary rate limit), or 'error'."""
+    resp = requests.post(
+        f"{GEMINI_BASE_URL}/models/{model}:generateContent",
+        headers={"Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY},
+        json={
+            "contents": [{"parts": [{"text": prompt}]}],
+            # generous limit: some Gemini models spend part of this budget "thinking"
+            "generationConfig": {"temperature": 0.4, "maxOutputTokens": 2048},
+        },
+        timeout=60,
+    )
+    if resp.ok:
+        data = resp.json()
+        candidates = data.get("candidates") or []
+        parts = (candidates[0].get("content", {}).get("parts", []) if candidates else [])
+        text = "".join(p.get("text", "") for p in parts).strip()
+        if text:
+            return text, "ok"
+        reason = candidates[0].get("finishReason") if candidates else "no candidates"
+        print(f"    {model} returned no text (finishReason: {reason})")
+        return None, "error"
+    body = resp.text
+    if resp.status_code in (403, 404):
+        print(f"    {model} not usable (HTTP {resp.status_code}), trying next model")
+        return None, "dead"
+    if resp.status_code == 429:
+        if "limit: 0" in body:
+            print(f"    {model} has no free quota on this key, trying next model")
+            return None, "dead"
+        return None, "retry"
+    print(f"    {model} HTTP {resp.status_code}: {body[:300]}")
+    return None, "error"
 
 
 def generate_description(symbol, name):
     """Ask Gemini (free tier) for a 5-10 sentence, investor-pitch-style explanation
     of the token, based only on its name/symbol (we have no project docs/whitepaper
     to feed it). Explicitly told not to invent facts — should say plainly when it
-    doesn't recognize the project and call it a speculative/meme token in that case."""
+    doesn't recognize the project and call it a speculative/meme token in that case.
+    Tries each candidate model in order until one works. Returns None if none do,
+    so nothing junk gets cached and the token is retried on the next run."""
     if not GEMINI_API_KEY:
-        return None  # no key set: skip quietly, so nothing junk gets cached or shown on the page
-
-    model = pick_gemini_model()
-    if not model:
-        return None
+        return None  # no key set: skip quietly
 
     prompt = f"""You're explaining a cryptocurrency token to a potential investor, in 5 to 10 sentences.
 
@@ -309,35 +353,26 @@ Cover:
 
 Write it as plain, direct prose an investor can skim quickly. No headers, no bullet points."""
 
-    try:
-        resp = requests.post(
-            f"{GEMINI_BASE_URL}/models/{model}:generateContent",
-            headers={"Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY},
-            json={
-                "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {"temperature": 0.4, "maxOutputTokens": 600},
-            },
-            timeout=30,
-        )
-        if not resp.ok:
-            # print the actual response body — Google's error detail (API not enabled,
-            # bad key, wrong model, etc.) is in here, but raise_for_status() alone
-            # would hide it and just say "404 Not Found"
-            print(f"    Gemini HTTP {resp.status_code} for {symbol}: {resp.text[:500]}")
-        resp.raise_for_status()
-        data = resp.json()
-        candidates = data.get("candidates") or []
-        if not candidates:
-            print(f"    Gemini returned no candidates for {symbol}: {data}")
-            return None
-        parts = candidates[0].get("content", {}).get("parts", [])
-        if not parts:
-            print(f"    Gemini returned no text parts for {symbol}: {candidates[0]}")
-            return None
-        return parts[0].get("text", "").strip()
-    except Exception as e:
-        print(f"    Gemini description generation failed for {symbol}: {e}")
-        return None
+    for model in get_gemini_candidates():
+        if model in _gemini_dead_models:
+            continue
+        try:
+            text, status = _call_gemini(model, prompt)
+            if status == "retry":
+                # real per-minute rate limit: wait a bit and try this model once more
+                print(f"    {model} rate limited, waiting 20s and retrying once")
+                time.sleep(20)
+                text, status = _call_gemini(model, prompt)
+        except Exception as e:
+            print(f"    Gemini call failed for {symbol} on {model}: {e}")
+            continue
+        if status == "ok":
+            print(f"    described {symbol} using {model}")
+            return text
+        if status == "dead":
+            _gemini_dead_models.add(model)
+    print(f"    no Gemini model produced a description for {symbol}")
+    return None
 
 
 def run_pipeline():
@@ -638,7 +673,7 @@ def main():
                 "address": t["address"], "symbol": t["symbol"],
                 "description": desc, "generated_at": now.isoformat(),
             })
-        time.sleep(REQUEST_PAUSE_SEC)
+        time.sleep(DESCRIPTION_PAUSE_SEC)
     if new_cache_rows:
         save_description_cache(new_cache_rows)
         print(f"Generated {len(new_cache_rows)} new description(s), cached to {DESCRIPTIONS_PATH}")
