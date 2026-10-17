@@ -34,6 +34,7 @@ jobs:
           git config user.name "robinhood-tracker-bot"
           git config user.email "robinhood-tracker-bot@users.noreply.github.com"
           git add docs/robinhood.html robinhood_token_history.csv
+          if [ -d docs/robinhood ]; then git add docs/robinhood; fi
           if [ -f robinhood_token_descriptions.csv ]; then git add robinhood_token_descriptions.csv; fi
           git diff --quiet && git diff --staged --quiet || git commit -m "Update Robinhood Chain scanner results"
           git fetch origin main
