@@ -20,7 +20,8 @@ BASE_URL = f"https://api.blockscout.com/{CHAIN_ID}/api/v2"
 HEADERS = {"Authorization": f"Bearer {API_KEY}"}
 DEXSCREENER_TOKENS_URL = "https://api.dexscreener.com/latest/dex/tokens"
 DEX_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; screener-bot/1.0)"}
-GEMINI_CHAT_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
+_gemini_model_cache = {}  # holds the model name chosen for this run, so we only look it up once
 
 # ---- Filters ----
 MIN_MARKET_CAP = 100_000
@@ -238,13 +239,58 @@ def save_description_cache(cache_rows):
     combined.to_csv(DESCRIPTIONS_PATH, index=False)
 
 
+def pick_gemini_model():
+    """Ask Google which models this API key can actually call, and pick a fast 'flash'
+    one. Model names get retired/renamed often (gemini-1.5-flash and 2.0-flash both
+    404'd for this key), so we look it up live instead of hardcoding a name.
+    Prints the full list once per run so the Actions log shows what's available."""
+    if "name" in _gemini_model_cache:
+        return _gemini_model_cache["name"]
+    chosen = None
+    try:
+        resp = requests.get(
+            f"{GEMINI_BASE_URL}/models",
+            headers={"x-goog-api-key": GEMINI_API_KEY},
+            params={"pageSize": 100},
+            timeout=20,
+        )
+        if not resp.ok:
+            print(f"    Gemini model list failed: HTTP {resp.status_code}: {resp.text[:500]}")
+        else:
+            models = [
+                m["name"].replace("models/", "")
+                for m in resp.json().get("models", [])
+                if "generateContent" in m.get("supportedGenerationMethods", [])
+            ]
+            print(f"    Gemini models available for generateContent: {', '.join(models) or 'none'}")
+            skip_words = ("lite", "preview", "exp", "thinking", "image", "tts", "audio", "live", "robotics", "embedding")
+            preferred = [m for m in models if "flash" in m and not any(w in m for w in skip_words)]
+            # newest-looking first (e.g. gemini-2.5-flash before gemini-2.0-flash)
+            preferred.sort(reverse=True)
+            if preferred:
+                chosen = preferred[0]
+            else:
+                fallback = [m for m in models if "gemini" in m and "embedding" not in m]
+                chosen = fallback[0] if fallback else None
+    except Exception as e:
+        print(f"    Gemini model lookup failed: {e}")
+    if chosen:
+        print(f"    Using Gemini model: {chosen}")
+    _gemini_model_cache["name"] = chosen
+    return chosen
+
+
 def generate_description(symbol, name):
     """Ask Gemini (free tier) for a 5-10 sentence, investor-pitch-style explanation
     of the token, based only on its name/symbol (we have no project docs/whitepaper
     to feed it). Explicitly told not to invent facts — should say plainly when it
     doesn't recognize the project and call it a speculative/meme token in that case."""
     if not GEMINI_API_KEY:
-        return "(no GEMINI_API_KEY set — description not generated)"
+        return None  # no key set: skip quietly, so nothing junk gets cached or shown on the page
+
+    model = pick_gemini_model()
+    if not model:
+        return None
 
     prompt = f"""You're explaining a cryptocurrency token to a potential investor, in 5 to 10 sentences.
 
@@ -265,12 +311,11 @@ Write it as plain, direct prose an investor can skim quickly. No headers, no bul
 
     try:
         resp = requests.post(
-            GEMINI_CHAT_URL,
-            headers={"Content-Type": "application/json"},
-            params={"key": GEMINI_API_KEY},
+            f"{GEMINI_BASE_URL}/models/{model}:generateContent",
+            headers={"Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY},
             json={
                 "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {"temperature": 0.4, "maxOutputTokens": 400},
+                "generationConfig": {"temperature": 0.4, "maxOutputTokens": 600},
             },
             timeout=30,
         )
