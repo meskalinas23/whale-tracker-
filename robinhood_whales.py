@@ -8,6 +8,7 @@ future holder-growth / rug-survival analysis.
 
 import os
 import time
+import html as html_lib
 import datetime as dt
 
 import requests
@@ -61,7 +62,7 @@ PINNED_TOKENS = {
 
 HISTORY_PATH = "robinhood_token_history.csv"
 HISTORY_COLUMNS = [
-    "timestamp", "symbol", "address", "market_cap", "volume_24h", "liquidity_usd",
+    "timestamp", "symbol", "name", "address", "market_cap", "volume_24h", "liquidity_usd",
     "holders_count", "age_hours", "buys_24h", "sells_24h", "exchange_rate",
 ]
 
@@ -496,8 +497,8 @@ def save_history(tokens, now):
     rows = []
     for t in tokens:
         rows.append({
-            "timestamp": now.isoformat(), "symbol": t["symbol"], "address": t["address"],
-            "market_cap": t["market_cap"], "volume_24h": t["volume_24h"],
+            "timestamp": now.isoformat(), "symbol": t["symbol"], "name": t.get("name", ""),
+            "address": t["address"], "market_cap": t["market_cap"], "volume_24h": t["volume_24h"],
             "liquidity_usd": t.get("liquidity_usd", 0), "holders_count": t["holders_count"],
             "age_hours": t.get("age_hours"), "buys_24h": t.get("buys_24h", 0),
             "sells_24h": t.get("sells_24h", 0), "exchange_rate": t["exchange_rate"],
@@ -516,9 +517,171 @@ def save_history(tokens, now):
     combined.to_csv(HISTORY_PATH, index=False)
 
 
-def build_html_report(final_tokens, holders_by_address, counts, now, wallet_overlap=None, descriptions=None) -> str:
+DAYS_DIR = "docs/robinhood"
+
+
+def load_history_df():
+    """Read the scan history and add a parsed UTC timestamp + UTC calendar day."""
+    try:
+        df = pd.read_csv(HISTORY_PATH)
+    except FileNotFoundError:
+        return pd.DataFrame()
+    if df.empty:
+        return df
+    df["ts"] = pd.to_datetime(df["timestamp"], format="ISO8601", utc=True)
+    df["day"] = df["ts"].dt.strftime("%Y-%m-%d")
+    if "name" not in df.columns:
+        df["name"] = ""  # rows saved before names were recorded
+    df["name"] = df["name"].fillna("")
+    return df
+
+
+def aggregate_day(day_df):
+    """One entry per coin that passed the filters at least once during this UTC day."""
+    last_run_ts = day_df["ts"].max()
+    coins = []
+    for address, g in day_df.sort_values("ts").groupby("address", sort=False):
+        last = g.iloc[-1]
+        age = last.get("age_hours")
+        coins.append({
+            "address": address,
+            "symbol": str(last["symbol"]),
+            "name": str(last["name"]),
+            "runs": int(g["ts"].nunique()),
+            "first_seen": g["ts"].iloc[0],
+            "last_seen": g["ts"].iloc[-1],
+            "still_listed": bool(g["ts"].iloc[-1] == last_run_ts),
+            "market_cap": float(last["market_cap"]),
+            "peak_market_cap": float(g["market_cap"].max()),
+            "holders": int(last["holders_count"]),
+            "volume_24h": float(last["volume_24h"]),
+            "liquidity": float(last["liquidity_usd"]),
+            "age_hours": float(age) if pd.notna(age) else None,
+        })
+    coins.sort(key=lambda c: (-c["runs"], c["market_cap"]))
+    return coins
+
+
+def build_day_page_html(day, coins, total_runs, prev_day, prev_coins, descriptions):
+    esc = html_lib.escape
+
+    def badges(items):
+        if not items:
+            return "<span style='color:#888;'>none</span>"
+        return " ".join(
+            f"<span style='background:#eef;border:1px solid #ccd;padding:1px 7px;border-radius:10px;"
+            f"font-size:0.85em;margin-right:4px;display:inline-block;'>{esc(c['symbol'])}</span>"
+            for c in items
+        )
+
+    if prev_coins is None:
+        diff_html = "<p style='color:#666;'>No earlier day in the history to compare with.</p>"
+    else:
+        today_addrs = {c["address"] for c in coins}
+        prev_addrs = {c["address"] for c in prev_coins}
+        new_coins = [c for c in coins if c["address"] not in prev_addrs]
+        dropped_coins = [c for c in prev_coins if c["address"] not in today_addrs]
+        diff_html = (
+            f"<p><strong>🆕 New vs {prev_day}</strong> ({len(new_coins)}): {badges(new_coins)}</p>"
+            f"<p><strong>📉 Dropped out vs {prev_day}</strong> ({len(dropped_coins)}): {badges(dropped_coins)}</p>"
+        )
+
+    def card(c):
+        status = (
+            f"<span style='background:#e6f4ea;color:#1e7e34;padding:1px 6px;border-radius:3px;font-size:0.8em;margin-left:6px;'>"
+            f"still listed at end of day</span>"
+            if c["still_listed"] else
+            f"<span style='background:#fdecea;color:#b3261e;padding:1px 6px;border-radius:3px;font-size:0.8em;margin-left:6px;'>"
+            f"dropped out, last seen {c['last_seen'].strftime('%H:%M')} UTC</span>"
+        )
+        age = f"{c['age_hours']:.0f}h" if c["age_hours"] is not None else "—"
+        desc = descriptions.get(c["address"])
+        desc_html = (
+            f"<p style='background:#f9f9f9; border-left:3px solid #bbb; padding:8px 12px; margin-top:10px; "
+            f"font-size:0.9em; color:#333;'>{esc(str(desc))}</p>" if desc else ""
+        )
+        link = f"https://robinhoodchain.blockscout.com/token/{esc(c['address'])}"
+        name_part = f" — {esc(c['name'])}" if c["name"] else ""
+        return f"""
+        <div class="token-card">
+            <h3><a href="{link}" target="_blank">{esc(c['symbol'])}</a>{name_part}{status}</h3>
+            <p>Seen in <strong>{c['runs']}</strong> of {total_runs} scans
+               ({c['first_seen'].strftime('%H:%M')} → {c['last_seen'].strftime('%H:%M')} UTC)</p>
+            <p>Market cap: ${c['market_cap']:,.0f} (day peak ${c['peak_market_cap']:,.0f}) &nbsp;|&nbsp;
+               Holders: {c['holders']} &nbsp;|&nbsp; 24h volume: ${c['volume_24h']:,.0f} &nbsp;|&nbsp;
+               Liquidity: ${c['liquidity']:,.0f} &nbsp;|&nbsp; Age at last scan: {age}</p>
+            {desc_html}
+        </div>
+        """
+
+    cards = "".join(card(c) for c in coins) or "<p>No coins passed the filters this day.</p>"
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Robinhood Chain Scanner — {day}</title>
+    <style>
+        body {{ font-family: -apple-system, Arial, sans-serif; max-width: 1000px; margin: 20px auto; padding: 0 15px; }}
+        .token-card {{ border: 1px solid #ddd; border-radius: 6px; padding: 15px; margin-bottom: 15px; }}
+        .token-card h3 {{ margin-top: 0; }}
+        a {{ color: #1a73e8; text-decoration: none; }}
+        a:hover {{ text-decoration: underline; }}
+        nav {{ margin-bottom: 20px; }}
+        nav a {{ margin-right: 15px; }}
+        .notes {{ color: #555; font-size: 0.85em; margin-top: 20px; }}
+    </style>
+</head>
+<body>
+    <nav><a href="../index.html">Hyperliquid Whales</a> | <a href="../robinhood.html">Robinhood Chain (live)</a></nav>
+    <h1>Robinhood Chain — {day} (UTC)</h1>
+    <p>{len(coins)} coin(s) passed the filters at some point this day, over {total_runs} logged scans.</p>
+    {diff_html}
+    <h2>Coins on the list this day</h2>
+    <p style="color:#666; font-size:0.85em;">Sorted by how many scans each coin appeared in. Figures are from each coin's
+       last scan that day. Top-holder wallets are only shown on the live page.</p>
+    {cards}
+    <p class="notes">Built from the scan history. Days are UTC. If a scan found no qualifying coins it leaves no
+       record, so scan counts can be slightly low. Not financial advice.</p>
+</body>
+</html>
+"""
+
+
+def write_day_pages(now, descriptions):
+    """Write one page per UTC day found in the history. Finished days (older than 2 days)
+    are written once and then left alone, so they survive after the 30-day history trim.
+    Returns [(day, coin_count_or_None), ...] newest first, for the 'Past days' list."""
+    os.makedirs(DAYS_DIR, exist_ok=True)
+    on_disk = {f[:-5] for f in os.listdir(DAYS_DIR) if f.endswith(".html")}
+    df = load_history_df()
+    if df.empty:
+        return [(d, None) for d in sorted(on_disk, reverse=True)]
+
+    days = sorted(df["day"].unique())
+    recent_cutoff = (now - pd.Timedelta(days=2)).strftime("%Y-%m-%d")
+    counts = {}
+    for i, day in enumerate(days):
+        day_df = df[df["day"] == day]
+        coins = aggregate_day(day_df)
+        counts[day] = len(coins)
+        path = os.path.join(DAYS_DIR, f"{day}.html")
+        if day < recent_cutoff and os.path.exists(path):
+            continue
+        prev_day = days[i - 1] if i > 0 else None
+        prev_coins = aggregate_day(df[df["day"] == prev_day]) if prev_day else None
+        page = build_day_page_html(day, coins, int(day_df["ts"].nunique()), prev_day, prev_coins, descriptions)
+        with open(path, "w") as f:
+            f.write(page)
+    all_days = sorted(on_disk | set(days), reverse=True)
+    return [(d, counts.get(d)) for d in all_days]
+
+
+def build_html_report(final_tokens, holders_by_address, counts, now, wallet_overlap=None, descriptions=None, archive_days=None) -> str:
     wallet_overlap = wallet_overlap or {}
     descriptions = descriptions or {}
+    archive_days = archive_days or []
+    esc = html_lib.escape  # coin names/symbols come from token creators, so never insert them raw
 
     def market_cap_band_label(market_cap):
         bucket_index = int(market_cap // MARKET_CAP_BUCKET_WIDTH)
@@ -528,6 +691,7 @@ def build_html_report(final_tokens, holders_by_address, counts, now, wallet_over
 
     def render_card(t):
         holders = holders_by_address.get(t["address"], [])
+        sym = esc(str(t["symbol"]))
         holder_rows = ""
         for h in holders:
             wallet = h["wallet"]
@@ -539,24 +703,24 @@ def build_html_report(final_tokens, holders_by_address, counts, now, wallet_over
             if overlap_symbols:
                 others = [s for s in overlap_symbols if s != t["symbol"]]
                 if others:
-                    overlap_note = f" <span style='color:#c2185b; font-weight:bold;'>🔁 also holds: {', '.join(others)}</span>"
+                    overlap_note = f" <span style='color:#c2185b; font-weight:bold;'>🔁 also holds: {', '.join(esc(str(s)) for s in others)}</span>"
             holder_rows += (
                 f"<li><a href='{explorer_url}' target='_blank'>{short_addr}</a> — "
-                f"{h['amount']:,.2f} {t['symbol']} (${h['value_usd']:,.0f}, {pct_of_mcap:.1f}% of mcap){overlap_note}</li>"
+                f"{h['amount']:,.2f} {sym} (${h['value_usd']:,.0f}, {pct_of_mcap:.1f}% of mcap){overlap_note}</li>"
             )
-        pin_badge = f"<span style='background:#fff3cd;color:#856404;padding:1px 6px;border-radius:3px;font-size:0.8em;margin-left:6px;'>📌 {t['pinned_label']}</span>" if t.get("is_pinned") and t.get("pinned_label") else ""
+        pin_badge = f"<span style='background:#fff3cd;color:#856404;padding:1px 6px;border-radius:3px;font-size:0.8em;margin-left:6px;'>📌 {esc(str(t['pinned_label']))}</span>" if t.get("is_pinned") and t.get("pinned_label") else ""
         band_badge = f"<span style='background:#e8eaf6;color:#3949ab;padding:1px 6px;border-radius:3px;font-size:0.8em;margin-left:6px;'>{market_cap_band_label(t['market_cap'])}</span>"
         age_label = f"{t['age_hours']:.0f}h" if t.get("age_hours") is not None else "—"
         vol_ratio_label = f"{t.get('volume_mc_ratio', 0)*100:.0f}%" if "volume_mc_ratio" in t else "—"
         liq_ratio_label = f"{t.get('liquidity_mc_ratio', 0)*100:.0f}%" if "liquidity_mc_ratio" in t else "—"
         description = descriptions.get(t["address"])
         description_html = (
-            f"<p style='background:#f9f9f9; border-left:3px solid #bbb; padding:8px 12px; margin-top:10px; font-size:0.9em; color:#333;'>{description}</p>"
+            f"<p style='background:#f9f9f9; border-left:3px solid #bbb; padding:8px 12px; margin-top:10px; font-size:0.9em; color:#333;'>{esc(str(description))}</p>"
             if description else ""
         )
         return f"""
         <div class="token-card">
-            <h3>{t['symbol']} — {t['name']}{band_badge}{pin_badge}</h3>
+            <h3>{sym} — {esc(str(t['name']))}{band_badge}{pin_badge}</h3>
             <p>Price: ${t['exchange_rate']:,.6f} &nbsp;|&nbsp; Market Cap: ${t['market_cap']:,.0f} &nbsp;|&nbsp;
                Age: {age_label} &nbsp;|&nbsp; Holders: {t['holders_count']}</p>
             <p>24h Volume: ${t['volume_24h']:,.0f} ({vol_ratio_label} of mcap) &nbsp;|&nbsp;
@@ -573,6 +737,23 @@ def build_html_report(final_tokens, holders_by_address, counts, now, wallet_over
 
     memecoin_html = "".join(render_card(t) for t in memecoins) or "<p>No qualifying memecoins this run.</p>"
     major_html = "".join(render_card(t) for t in majors) or "<p>No qualifying majors/stablecoins this run.</p>"
+
+    today_str = now.strftime("%Y-%m-%d")
+    if archive_days:
+        day_links = " ".join(
+            f"<a class='daylink' href='robinhood/{d}.html'>{d}"
+            f"{' (today)' if d == today_str else ''}"
+            f"{f' · {n}' if n is not None else ''}</a>"
+            for d, n in archive_days
+        )
+        archive_html = (
+            "<h2>📅 Past days</h2>"
+            "<p style='color:#666; font-size:0.85em;'>Click a day to see every coin that passed the filters "
+            "that day, what's new vs the day before, and what dropped out. Number = coins that day (UTC).</p>"
+            f"<div class='days'>{day_links}</div>"
+        )
+    else:
+        archive_html = ""
 
     pipeline_html = "".join(f"<li>{k.replace('_', ' ')}: <strong>{v}</strong></li>" for k, v in counts.items())
 
@@ -595,6 +776,8 @@ def build_html_report(final_tokens, holders_by_address, counts, now, wallet_over
         nav a {{ margin-right: 15px; }}
         .pipeline {{ background: #f5f5f5; border-radius: 6px; padding: 12px 18px; font-size: 0.85em; }}
         .pipeline ul {{ list-style: none; padding-left: 0; }}
+        .days {{ display: flex; flex-wrap: wrap; gap: 8px; }}
+        .daylink {{ border: 1px solid #ccd; border-radius: 14px; padding: 3px 12px; font-size: 0.9em; background: #f5f6ff; }}
     </style>
 </head>
 <body>
@@ -616,6 +799,8 @@ def build_html_report(final_tokens, holders_by_address, counts, now, wallet_over
 
     <h2>🪙 Established Crypto & Stablecoins</h2>
     {major_html}
+
+    {archive_html}
 
     <p class="notes">
         Data: Blockscout (holders, market cap) + DexScreener (liquidity, age, buys/sells).
@@ -681,7 +866,10 @@ def main():
     save_history(final_tokens, now)
     print(f"Updated {HISTORY_PATH}")
 
-    html = build_html_report(final_tokens, holders_by_address, counts, now, wallet_overlap=wallet_overlap, descriptions=description_cache)
+    archive_days = write_day_pages(now, description_cache)
+    print(f"Wrote day pages in {DAYS_DIR}/ ({len(archive_days)} day(s) listed)")
+
+    html = build_html_report(final_tokens, holders_by_address, counts, now, wallet_overlap=wallet_overlap, descriptions=description_cache, archive_days=archive_days)
     os.makedirs("docs", exist_ok=True)
     with open("docs/robinhood.html", "w") as f:
         f.write(html)
